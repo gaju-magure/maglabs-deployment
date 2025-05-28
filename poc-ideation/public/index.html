@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Idea Refiner</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+    textarea, input { width: 100%; padding: 10px; margin: 10px 0; }
+    button { padding: 10px 20px; font-weight: bold; }
+    .result { background: #f0f0f0; padding: 20px; margin-top: 20px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h2>💡 Submit an Idea</h2>
+  <form id="idea-form">
+    <textarea name="idea" rows="4" placeholder="Write your idea here..."></textarea>
+    <button type="submit">Submit</button>
+  </form>
+
+  <div id="results" class="result" style="display:none;">
+    <h3>Refined Idea:</h3>
+    <p id="refined"></p>
+    <h3>Scores:</h3>
+    <ul>
+      <li>Clarity: <span id="clarity"></span></li>
+      <li>Value: <span id="value"></span></li>
+      <li>Complexity: <span id="complexity"></span></li>
+    </ul>
+  </div>
+
+  <script>
+    const form = document.getElementById('idea-form');
+    const results = document.getElementById('results');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const idea = form.idea.value;
+
+      const res = await fetch('/api/submit-idea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: idea })
+      });
+
+      const data = await res.json();
+      document.getElementById('refined').textContent = data.refined;
+      document.getElementById('clarity').textContent = data.scores.clarity;
+      document.getElementById('value').textContent = data.scores.value;
+      document.getElementById('complexity').textContent = data.scores.complexity;
+      results.style.display = 'block';
+    });
+  </script>
+</body>
+</html>

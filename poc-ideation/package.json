@@ -1,0 +1,22 @@
+{
+  "name": "poc-ideation",
+  "version": "1.0.0",
+  "description": "This is very basic server to confirm the ideation loop for magure labs platform, simulating chat, refining idea and basic scoring",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "express",
+    "openai",
+    "ideation",
+    "llm"
+  ],
+  "author": "Gajanand Sharma <gajanand742@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0"
+  }
+}

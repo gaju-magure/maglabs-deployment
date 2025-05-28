@@ -13,6 +13,11 @@ Welcome to the monorepo for the **multi-tenant AI-powered ideation platform**. T
 > - UI Break Down: [Details](./docs/product/3_persona_level_UI_breakdown.md)
 > - AI Usage: [Details](./docs/product/4_ai_usage.md)
 
+> - User Journey
+    - Magure Admin: [Details](./docs/product/5_user_journey_magure_admin.md)
+    - Tenant Admin: [Details](./docs/product/6_user_journey_tenant_admin.md)
+    - C Suite Exe:  [Details](./docs/product/7_user_journey_c_suite.md)
+    - Ideator:      [Details](./docs/product/8_user_journey_ideator.md)
 ---
 
 ### 🧾 Compliance & Regulation Support

@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
+
+
 const refineIdea = require('./openai/refineIdea');
 const scoreIdea = require('./openai/scoreIdea');
 
@@ -12,6 +14,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+app.use('/chat', require('./routes/chat'));
 
 app.post('/api/submit-idea', async (req, res) => {
   const { input } = req.body;
@@ -33,6 +37,6 @@ app.post('/api/submit-idea', async (req, res) => {
   }
 });
 
-app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+app.listen(3001, () => {
+  console.log('Server running on http://localhost:3001');
 });

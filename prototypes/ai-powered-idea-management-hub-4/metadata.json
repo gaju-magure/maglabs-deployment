@@ -1,0 +1,6 @@
+{
+  "name": "AI-Powered Idea Management Hub",
+  "description": "A web application to capture, categorize, and manage innovative ideas using AI assistance. Users can submit ideas, which are then automatically categorized by Gemini.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}

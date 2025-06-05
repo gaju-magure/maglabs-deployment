@@ -1,0 +1,61 @@
+# Stage 1: Build the React application
+FROM node:20-alpine as builder
+
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package.json package-lock.json* ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code and configuration files
+COPY . .
+
+# Generate environment config using our existing script
+# First copy env vars to .env for the script to read
+RUN if [ -f .env.local ]; then cp .env.local .env; fi
+
+# Generate the config.js file that will be served at runtime
+RUN node scripts/generate-env-config.js
+
+# Build the application
+RUN npx vite build
+
+# Stage 2: Serve with nginx and runtime environment support
+FROM nginx:1.25-alpine
+
+WORKDIR /app
+
+# Copy the built application
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy the environment generation script for runtime use
+COPY --from=builder /app/scripts/generate-env-config.js /app/
+COPY --from=builder /app/package.json /app/
+
+# Install Node.js in the nginx container for runtime env generation
+RUN apk add --no-cache nodejs npm
+
+# Create startup script that generates config.js at runtime
+RUN echo '#!/bin/sh' > /app/startup.sh && \
+    echo 'echo "Generating runtime environment configuration..."' >> /app/startup.sh && \
+    echo 'cd /app' >> /app/startup.sh && \
+    echo 'mkdir -p public' >> /app/startup.sh && \
+    echo 'node generate-env-config.js' >> /app/startup.sh && \
+    echo 'if [ -f /app/config.js ]; then cp /app/config.js /usr/share/nginx/html/config.js; fi' >> /app/startup.sh && \
+    echo 'if [ -f /app/public/config.js ]; then cp /app/public/config.js /usr/share/nginx/html/config.js; fi' >> /app/startup.sh && \
+    echo 'echo "Config.js contents:"' >> /app/startup.sh && \
+    echo 'cat /usr/share/nginx/html/config.js' >> /app/startup.sh && \
+    echo 'echo "Starting nginx..."' >> /app/startup.sh && \
+    echo 'nginx -g "daemon off;"' >> /app/startup.sh && \
+    chmod +x /app/startup.sh
+
+# Create a default config.js in case env vars are missing
+RUN echo 'window.ENV = {};' > /usr/share/nginx/html/config.js
+
+# Expose port 80
+EXPOSE 80
+
+# Use our startup script instead of direct nginx
+CMD ["/app/startup.sh"]

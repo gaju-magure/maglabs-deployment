@@ -1,0 +1,15 @@
+{
+  "name": "idea-hub-auth-tests",
+  "version": "1.0.0",
+  "description": "Integration tests for Supabase authentication system",
+  "type": "module",
+  "main": "auth-integration-test.js",
+  "scripts": {
+    "test": "node auth-integration-test.js",
+    "test:wait": "sleep 30 && npm run test"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.1",
+    "node-fetch": "^3.3.2"
+  }
+}

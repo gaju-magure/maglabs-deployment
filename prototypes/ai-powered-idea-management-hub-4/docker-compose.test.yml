@@ -1,0 +1,27 @@
+# Docker Compose configuration for testing
+
+services:
+  # Frontend service - main focus for authentication testing
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: idea_hub_frontend_test
+    environment:
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+    ports:
+      - "3000:80"
+    networks:
+      - test_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/config.js"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+networks:
+  test_network:
+    driver: bridge

@@ -1,0 +1,20 @@
+# Test runner Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install additional tools for health checks
+RUN apk add --no-cache curl wget
+
+# Copy package.json and install dependencies
+COPY package.json ./
+RUN npm install
+
+# Copy test files
+COPY . .
+
+# Make test script executable
+RUN chmod +x auth-integration-test.js
+
+# Default command
+CMD ["npm", "run", "test"]

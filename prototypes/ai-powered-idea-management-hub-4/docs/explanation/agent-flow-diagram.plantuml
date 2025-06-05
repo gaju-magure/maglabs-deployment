@@ -1,0 +1,70 @@
+@startuml
+skinparam monochrome true
+skinparam padding 4
+skinparam sequenceMessageAlign center
+skinparam sequenceParticipant underline
+
+'────────────────── Participants ──────────────────
+actor "Submitter"             as U
+participant "React Wizard UI" as UI
+database   "Supabase-\nPostgres"          as DB
+participant ":core_svc\nFastAPI"          as API
+participant ":dynamic-fields_svc"         as DFS
+participant ":ai_svc\n(OpenAI + pgvector)" as AIS
+participant "Realtime WS"      as WS
+participant "Supervisor UI"    as SUP
+
+'────────────────── Step 0 – Login & Dashboard ─────────────
+U  -> UI  : Sign in (OAuth)
+UI -> UI  : show Dashboard\n(+ New Idea)
+
+'────────────────── Step 1 – Category Select ───────────────
+U -> UI  : click +New Idea
+UI -> UI  : Step-1 modal\nrender category chips
+U  --> UI : select one or more tags
+UI -> DFS : POST /dynamic-fields\n{ categories }
+DFS --> UI : JSON schema for extra fields
+UI -> UI  : render Step-2+3 forms\ndynamically
+
+'────────────────── Step 2 – Describe & Dynamic Fields ─────
+U  --> UI : fill title, description
+U  --> UI : fill ROI / TRL / tCO₂e …\n(based on schema)
+UI -> UI  : client-side validation (zod)
+
+'────────────────── Step 3 – Review & Submit ───────────────
+U  -> UI  : click **Submit Idea**
+UI -> API : POST /ideas\n(payload incl. cat + fields)
+activate API
+
+  '───────── 3a AI Tag Suggest & Dup Check ───────────
+  API -> AIS : classify_tags + embed
+  AIS --> API : tags[], confidence, embedding
+  API -> DB  : INSERT idea, embedding, status=CAPTURED
+  API -> AIS : SELECT id FROM idea\nORDER BY embedding <-> ? LIMIT 1
+  AIS --> API : possible_duplicate_id | null
+
+  '───────── 3b Save + Broadcast ─────────────────────
+  API -> DB : UPDATE idea\nSET ai_confidence, primary_tag
+  API -> WS : emit change over channel
+deactivate API
+API --> UI  : 201 Created + idea JSON
+
+'────────────────── Step 4 – Wizard Success ────────────────
+UI -> UI  : show toast “Idea captured”
+UI -> UI  : navigate to Idea Detail\nStatus = **CAPTURED**
+UI <-- WS : change event ⇒ status=SCREENED (later)
+
+'────────────────── Downstream: Supervisor Line-up ─────────
+note over API, SUP
+  *If* primary_tag includes REGULATORY_COMPLIANCE  
+  🌐 API adds idea to Reg-Ops queue;  
+  else → Standard Evaluation queue.
+end note
+
+WS --> SUP : push idea in queue
+SUP -> SUP : reviewer opens card → approve/reject
+SUP -> API : POST /ideas/{id}/approve
+API -> DB  : status=APPROVED
+WS --> UI  : toast “Idea approved 🎉”
+
+@enduml

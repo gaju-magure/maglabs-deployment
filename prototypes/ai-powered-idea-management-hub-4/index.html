@@ -1,0 +1,95 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magure Idea Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,300;1,400&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandOrange: '#FDA052',
+            brandCyan: '#41E6F8',
+            brandPurple: '#B96AF7',
+            brandBlue: '#3077F3',
+            primary: { // Based on brandBlue
+              light: '#79A6FF', // Lighter shade
+              DEFAULT: '#3077F3', 
+              dark: '#1E5BC6',  // Darker shade
+            },
+            secondary: { // Based on brandOrange
+              light: '#FFC58C', 
+              DEFAULT: '#FDA052', 
+              dark: '#E68430',   
+            },
+            accent: { // Based on brandPurple
+              light: '#D29FFF',
+              DEFAULT: '#B96AF7',
+              dark: '#9F4DE0',
+            },
+            highlight: { // Based on brandCyan
+              light: '#83F2FF',
+              DEFAULT: '#41E6F8',
+              dark: '#25D0E6',
+            },
+            neutral: {
+              extralight: '#f8f9fa', // very light gray
+              light: '#f3f4f6',     // gray-100
+              DEFAULT: '#6b7280',   // gray-500 
+              dark: '#374151',       // gray-700 (for less prominent text)
+              darker: '#1f2937'     // gray-800 (for headlines, body text)
+            }
+          },
+          fontFamily: {
+            // Satoshi would be prepended if available locally: ['Satoshi', 'Montserrat', ...]
+            sans: ['Montserrat', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'], 
+          },
+        }
+      }
+    }
+  </script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.0",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "crypto": "https://esm.sh/crypto@^1.0.1",
+    "uuid": "https://esm.sh/uuid@^11.1.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.0.1",
+    "dotenv": "https://esm.sh/dotenv@^16.5.0",
+    "express": "https://esm.sh/express@^5.1.0",
+    "cors": "https://esm.sh/cors@^2.8.5",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.39.1",
+    "@supabase/auth-ui-react": "https://esm.sh/@supabase/auth-ui-react@^0.4.6",
+    "@supabase/auth-ui-shared": "https://esm.sh/@supabase/auth-ui-shared@^0.1.8"
+  }
+}
+</script>
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif; /* Apply Montserrat globally */
+    }
+    /* Add medium weight for body text where needed */
+    .font-body-medium {
+      font-weight: 500;
+    }
+    /* Consistent rounded corners for buttons */
+    .btn-rounded {
+      border-radius: 8px; /* Approx 6-12px recommendation */
+    }
+  </style>
+</head>
+<body class="bg-neutral-light text-neutral-darker font-body-medium">
+  <div id="root"></div>
+  <!-- Load environment variables from config.js -->
+  <script src="/config.js"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

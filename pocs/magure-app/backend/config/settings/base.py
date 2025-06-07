@@ -13,13 +13,13 @@ ALLOWED_HOSTS = app.allowed_hosts
 # Guarantee that Tenant & Domain models are discovered
 TENANT_MODEL = "tenants.Tenant"
 TENANT_DOMAIN_MODEL = "tenants.Domain"
-AUTH_USER_MODEL = "accounts.User"
+AUTH_USER_MODEL = "users.User"
 
 # Application definition
 SHARED_APPS = [
     "django_tenants",
-    "tenants",
-    "accounts",
+    "apps.tenants",
+    "apps.users",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -34,8 +34,8 @@ SHARED_APPS = [
 TENANT_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
-    "accounts",
-    "core",
+    "apps.users",
+    "apps.ideas",
     "rest_framework_simplejwt.token_blacklist",  # optional if you want blacklisting
 ]
 
@@ -87,7 +87,9 @@ DATABASES = {
 DATABASE_ROUTERS = ["django_tenants.routers.TenantSyncRouter"]
 
 # ---------- CORS (to allow React) ----------
-CORS_ALLOWED_ORIGINS = cors.allowed_origins
+CORS_ALLOW_ALL_ORIGINS = True
+
+# CORS_ALLOWED_ORIGINS = cors.allowed_origins
 
 # ---------- Internationalization & Timezone ----------
 

@@ -32,7 +32,7 @@ django.setup()
 # ─── Imports ────────────────────────────────────────────────────────────────────
 from django_tenants.utils import get_public_schema_name, schema_context
 from django.contrib.auth import get_user_model
-from tenants.models import Tenant, Domain
+from apps.tenants.models import Tenant, Domain
 from django.db import transaction, IntegrityError
 
 User = get_user_model()
@@ -42,7 +42,7 @@ PUBLIC_SCHEMA = get_public_schema_name()  # usually "public"
 PUBLIC_DOMAIN  = "admin.localhost"
 SUPERADMIN_USERNAME = "superadmin@admin.localhost"
 SUPERADMIN_PASSWORD = "ChangeMe123!"  # <-- choose a secure default or read from env
-SUPERADMIN_ROLE = "super_admin"       # must match your User.role field
+SUPERADMIN_ROLE = "superadmin"       # must match your User.role field
 
 # Tenant‐admin defaults for new tenants:
 TENANT_ADMIN_PASSWORD = "TenantAdmin123!"  # default password for bootstrap tenant admins

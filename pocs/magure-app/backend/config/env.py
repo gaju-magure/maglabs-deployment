@@ -24,7 +24,7 @@ class _JWT:
     algorithm              = "HS256"
 
 class _CORS:
-    allowed_origins   = config("CORS_ALLOWED_ORIGINS", default="http://localhost:5173,http://maglabs.localhost:8080", cast=Csv())
+    allowed_origins   = config("CORS_ALLOWED_ORIGINS", default="*", cast=Csv())
     allow_credentials = True
 
 # instantiate singletons

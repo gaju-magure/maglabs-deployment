@@ -31,8 +31,6 @@ class TenantCreateSerializer(serializers.Serializer):
         name           = validated_data["name"]
         schema_name    = validated_data["schema_name"]
         domain_str     = validated_data["domain"]
-        admin_email    = validated_data["admin_email"]
-        admin_password = validated_data["admin_password"]
 
         # 1) Create the Tenant → auto-creates schema & migrations
         tenant = Tenant(schema_name=schema_name, name=name)
@@ -40,6 +38,17 @@ class TenantCreateSerializer(serializers.Serializer):
 
         # 2) Register domain in public
         Domain.objects.create(domain=domain_str, tenant=tenant, is_primary=True)
+
+        with schema_context(tenant.schema_name):
+            User = get_user_model()
+            User.objects.create_user(
+                username=validated_data["admin_email"],
+                email=validated_data["admin_email"],
+                password=validated_data["admin_password"],
+                role="tenant_admin",
+                is_staff=True,
+                is_superuser=False,
+            )
 
         return tenant
 

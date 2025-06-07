@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { CreateTenantModal } from '@/components/SuperAdmin/CreateTenantModal';
 import { EditTenantModal } from '@/components/SuperAdmin/EditTenantModal';
-import { apiClient, type Tenant } from '@/utils/api';
+import { getTenants, createTenant, type Tenant } from '@/services/tenantsApi';
 import { toast } from '@/hooks/use-toast';
 
 interface ExtendedTenant extends Tenant {
@@ -23,7 +23,7 @@ export const TenantsPage: React.FC = () => {
   const fetchTenants = async () => {
     try {
       setIsLoading(true);
-      const tenantsData = await apiClient.getTenants();
+      const tenantsData = await getTenants();
       // Add status field for UI compatibility
       const extendedTenants = tenantsData.map(tenant => ({
         ...tenant,
@@ -54,7 +54,7 @@ export const TenantsPage: React.FC = () => {
     status: 'active' | 'inactive';
   }) => {
     try {
-      await apiClient.createTenant({
+      await createTenant({
         name: newTenant.name,
         schema_name: newTenant.schemaName,
         domain: newTenant.primaryDomain,

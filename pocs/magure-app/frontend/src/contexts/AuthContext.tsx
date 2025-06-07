@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { apiClient } from '@/utils/api';
+import { login as loginApi } from '@/services/authApi';
 
 interface User {
   id: string;
@@ -37,7 +37,6 @@ interface AuthProviderProps {
 
 const decodeJWT = (token: string): User | null => {
   try {
-    debugger;
     // 1) Split the JWT and base64‐decode the payload
     const base64Payload = token.split('.')[1];
     const payload: Record<string, any> = JSON.parse(atob(base64Payload));
@@ -76,15 +75,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.login({
+      const response = await loginApi({
         username: email,
         password: password,
       });
 
       localStorage.setItem('auth_token', response.access);
       localStorage.setItem('refresh_token', response.refresh);
-      
-      debugger;
+
       const userData = decodeJWT(response.access);
       setUser(userData);
     } catch (error) {

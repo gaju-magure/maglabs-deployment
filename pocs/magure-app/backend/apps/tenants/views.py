@@ -1,15 +1,13 @@
 from rest_framework import mixins, viewsets, status
 
-from rest_framework.permissions import IsAuthenticated
-from accounts.permissions import IsSuperAdmin, IsTenantAdmin, IsTenantUser
+from rest_framework.permissions import IsAuthenticated, OR
+from apps.users.permissions import IsSuperAdmin, IsTenantAdmin, IsTenantUser
 
 from rest_framework.response import Response
 from django_tenants.utils import schema_context
 
 from .models import Tenant
 from .serializers import TenantCreateSerializer, TenantInfoSerializer
-
-
 
 class TenantViewSet(
     mixins.ListModelMixin,
@@ -26,9 +24,12 @@ class TenantViewSet(
         if self.action in ['create', 'destroy']:
             return [IsAuthenticated(), IsSuperAdmin()]
         elif self.action in ['update', 'partial_update']:
-            return [IsAuthenticated(), IsSuperAdmin() | IsTenantAdmin()]
+            return [IsAuthenticated(), OR(IsSuperAdmin(), IsTenantAdmin())]
         elif self.action in ['retrieve', 'list']:
-            return [IsAuthenticated(), IsSuperAdmin() | IsTenantAdmin() | IsTenantUser()]
+            return [
+                IsAuthenticated(), 
+                OR(IsSuperAdmin(), OR(IsTenantAdmin(), IsTenantUser()))
+            ]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
@@ -53,19 +54,6 @@ class TenantViewSet(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         tenant = serializer.save()
-
-        with schema_context(tenant.schema_name):
-            from django.contrib.auth import get_user_model
-
-            User = get_user_model()
-            User.objects.create_user(
-                username=request.data["admin_email"],
-                email=request.data["admin_email"],
-                password=request.data["admin_password"],
-                role="tenant_admin",
-                is_staff=True,
-                is_superuser=False,
-            )
 
         info = TenantInfoSerializer(tenant).data
         return Response(info, status=status.HTTP_201_CREATED)

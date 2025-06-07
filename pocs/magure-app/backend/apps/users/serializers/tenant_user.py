@@ -10,11 +10,6 @@ class TenantUserCreateSerializer(serializers.Serializer):
     last_name  = serializers.CharField(max_length=150, required=False, allow_blank=True)
 
     def validate_email(self, value):
-        """
-        Prevent creating two users with the same username/email in this tenant.
-        Because 'accounts' lives under TENANT_APPS, User.objects here
-        queries the tenant's own accounts_user table.
-        """
         if User.objects.filter(username=value).exists():
             raise serializers.ValidationError(
                 "A user with that email already exists in this tenant."
@@ -22,7 +17,6 @@ class TenantUserCreateSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
-        print(User)
         return User.objects.create_user(
             username     = validated_data["email"],
             email        = validated_data["email"],

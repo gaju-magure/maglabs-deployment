@@ -10,7 +10,9 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Login } from "@/pages/Login";
 import { TenantsPage } from "@/pages/SuperAdmin/TenantsPage";
 import { OnboardingPage } from "@/pages/SuperAdmin/OnboardingPage";
+import { UsersPage } from "@/pages/SuperAdmin/UsersPage";
 import { ContentWallPage } from "@/pages/TenantAdmin/ContentWallPage";
+import { UsersPage as TenantUsersPage } from "@/pages/TenantAdmin/UsersPage";
 import { IdeasPage } from "@/pages/TenantUser/IdeasPage";
 
 const queryClient = new QueryClient();
@@ -30,6 +32,7 @@ const App = () => (
               <ProtectedRoute allowedRoles={['superadmin']}>
                 <DashboardLayout>
                   <Routes>
+                    <Route path="users" element={<UsersPage />} />
                     <Route path="tenants" element={<TenantsPage />} />
                     <Route path="onboarding" element={<OnboardingPage />} />
                     <Route path="settings" element={
@@ -49,11 +52,7 @@ const App = () => (
                 <DashboardLayout>
                   <Routes>
                     <Route path="content" element={<ContentWallPage />} />
-                    <Route path="users" element={
-                      <div className="p-8 text-center text-gray-600">
-                        User Management page - Coming soon
-                      </div>
-                    } />
+                    <Route path="users" element={<TenantUsersPage />} />
                     <Route path="ideas" element={<IdeasPage />} />
                     <Route path="*" element={<Navigate to="/tenant/content" replace />} />
                   </Routes>

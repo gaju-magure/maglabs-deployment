@@ -3,6 +3,12 @@
 import os
 import sys
 
+# Enable debugpy for VSCode debugging if DEBUGPY_ENABLE=1
+if os.environ.get("DEBUGPY_ENABLE") == "1":
+    import debugpy
+    debugpy.listen(("0.0.0.0", 5678))
+    print("debugpy is listening on 0.0.0.0:5678")
+
 
 def main():
     """Run administrative tasks."""

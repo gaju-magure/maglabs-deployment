@@ -29,6 +29,7 @@ export const Navbar: React.FC = () => {
     switch (user?.role) {
       case UserRole.SuperAdmin:
         return [
+          { to: '/dashboard/users', label: 'User Management' },
           { to: '/dashboard/tenants', label: 'Tenants' },
           { to: '/dashboard/onboarding', label: 'Onboarding' },
           { to: '/dashboard/settings', label: 'Settings' },

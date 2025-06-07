@@ -1,0 +1,179 @@
+# ─── Python / Django ──────────────────────────────────────────────────────────
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtualenv
+#   If your virtualenv is named "venv" or ".venv" inside the repo:
+venv/
+.env/
+*/.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Django stuff:
+*.log
+*.pot
+*.pyc
+*.sqlite3
+db.sqlite3
+db.sqlite3-journal
+
+# If you store Django SECRET_KEY or DEBUG settings in a .env file:
+.env
+.env.*
+
+# Media/uploads (if you don’t want to commit user-uploaded files)
+media/
+staticfiles/
+
+# Django migrations (optional—sometimes you want to commit them):
+# Comment this out if you do want migrations in VCS.
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# Pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+.idea/
+
+# VS Code
+.vscode/
+
+# Mac OS
+.DS_Store
+
+# Node / React / Vite ──────────────────────────────────────────────────────────
+
+# Node modules
+**/node_modules/
+
+# Build output
+**/dist/
+**/build/
+
+# Vite cache
+.vite/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env files (for frontend if you use .env.local etc.)
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# IDE/editor folders (global)
+*.sublime-workspace
+*.sublime-project
+.vscode/
+.idea/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache
+.npm/
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Yarn v2+
+.yarn/*
+!.yarn/cache
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# pnpm
+.pnpm-debug.log
+
+# Docker ───────────────────────────────────────────────────────────────────────
+
+# Docker files that shouldn’t be committed
+docker-compose.override.yml
+.env.docker
+Dockerfile.local
+
+# Ignore Docker volumes (if they live inside the repo)
+data/
+
+# Logs
+logs/
+*.log
+
+# Miscellaneous ────────────────────────────────────────────────────────────────
+
+# Local settings (if any)
+local_settings.py
+
+# IDE folders
+.idea/
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp

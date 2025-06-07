@@ -19,6 +19,13 @@ export interface CreateUserResponse {
   is_active: boolean;
 }
 
+export interface UserListPaginationResponse {
+  count: number,
+  next: string,
+  previous: null,
+  results: CreateUserResponse []
+}
+
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem('auth_token');
   return {
@@ -41,7 +48,7 @@ export async function createUser(userData: CreateUserRequest): Promise<CreateUse
   return response.json();
 }
 
-export async function getUsers(): Promise<CreateUserResponse []> {
+export async function getUsers(): Promise<UserListPaginationResponse> {
   const response = await fetch(`${API_BASE_URL}/api/v1/accounts/users/`, {
     method: 'GET',
     headers: getAuthHeaders(),

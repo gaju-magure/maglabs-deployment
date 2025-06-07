@@ -4,20 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FileText, Pin } from 'lucide-react';
-import { CreatePostModal } from '@/components/TenantAdmin/CreatePostModal';
-import { useEffect } from 'react';
-import { createUser, CreateUserRequest } from '@/services/usersApi';
-
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-  is_active: boolean;
-}
+import { Pin } from 'lucide-react';
 
 interface ContentPost {
   id: string;
@@ -79,16 +66,6 @@ export const ContentWallPage: React.FC = () => {
     <div className="space-y-6">
       {/* Content Wall Section */}
       <div>
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Content Wall</h1>
-          <Button 
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            New Post
-          </Button>
-        </div>
 
         <div className="grid gap-6">
           {sortedPosts.map((post) => (
@@ -134,12 +111,6 @@ export const ContentWallPage: React.FC = () => {
             </Card>
           ))}
         </div>
-
-        <CreatePostModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onSubmit={handleCreatePost}
-        />
       </div>
     </div>
   );

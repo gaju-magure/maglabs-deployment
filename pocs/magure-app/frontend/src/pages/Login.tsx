@@ -20,9 +20,9 @@ export const Login: React.FC = () => {
       case 'superadmin':
         return <Navigate to="/dashboard/tenants" replace />;
       case 'tenant_admin':
-        return <Navigate to="/tenant/content" replace />;
+        return <Navigate to="/dashboard/content" replace />;
       case 'tenant_user':
-        return <Navigate to="/tenant/ideas" replace />;
+        return <Navigate to="/dashboard/ideas" replace />;
       default:
         return <Navigate to="/" replace />;
     }

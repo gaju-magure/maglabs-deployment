@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { createUser, CreateUserRequest, CreateUserResponse } from '@/services/usersApi';
+import { createUser, CreateUserRequest, CreateUserResponse, getUsers } from '@/services/usersApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CreateUserModal } from '@/components/TenantAdmin/CreateUserModal';
+import { CreateUserModal } from '@/components/common/CreateUserModal';
 import { UserRole } from '@/enums/userRole';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface User extends CreateUserResponse {}
 
@@ -14,48 +15,36 @@ interface UserManagementTableProps {
 
 export const UserManagementTable: React.FC<UserManagementTableProps> = ({ role }) => {
   const [users, setUsers] = useState<User[]>([]);
-  const [isUserLoading, setIsUserLoading] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Fetch users on mount
   useEffect(() => {
     const fetchUsers = async () => {
-      setIsUserLoading(true);
       try {
-        const res = await fetch('/api/v1/accounts/users/', {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
-          },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUsers(data.results || data); // handle paginated or non-paginated
-        }
+        debugger;
+        const fetchedUsers = await getUsers()
+        setUsers(fetchedUsers.results); // handle paginated or non-paginated
       } finally {
-        setIsUserLoading(false);
       }
     };
     fetchUsers();
   }, []);
 
   const handleCreateUser = async (user: CreateUserRequest) => {
-    setIsUserLoading(true);
     try {
       const newUser = await createUser(user);
       setUsers([...(users || []), newUser]);
       setIsCreateModalOpen(false);
     } catch (err) {
       alert('Failed to create user');
-    } finally {
-      setIsUserLoading(false);
     }
   };
 
   // Role-based columns and actions
-  const canEdit = (user: User) =>
-    role === UserRole.SuperAdmin ||
-    (role === UserRole.TenantAdmin && user.role !== UserRole.SuperAdmin);
+  const canEdit = () => {
+    const { user } = useAuth();
+    return [UserRole.SuperAdmin, UserRole.TenantAdmin].includes(user.role as UserRole);
+  }
 
   const canCreate = role === UserRole.SuperAdmin || role === UserRole.TenantAdmin;
 
@@ -92,7 +81,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ role }
               <th className="border px-2 py-1">Last Name</th>
               <th className="border px-2 py-1">Role</th>
               <th className="border px-2 py-1">Active</th>
-              {users.length > 0 && canEdit(users[0]) && <th className="border px-2 py-1">Actions</th>}
+              {canEdit() && <th className="border px-2 py-1">Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -104,7 +93,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ role }
                 <td className="border px-2 py-1">{user.last_name}</td>
                 <td className="border px-2 py-1">{user.role}</td>
                 <td className="border px-2 py-1">{user.is_active ? 'Yes' : 'No'}</td>
-                {canEdit(user) && (
+                {canEdit() && (
                   <td className="border px-2 py-1">
                     {/* Edit and delete buttons can be added here */}
                     <Button size="sm" variant="outline" className="mr-2">Edit</Button>

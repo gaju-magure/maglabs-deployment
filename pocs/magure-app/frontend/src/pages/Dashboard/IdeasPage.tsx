@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { IdeaChat } from '@/components/IdeaChat/IdeaChat';
+import { IdeaChat } from '@/components/common/IdeaChat';
 
 export const IdeasPage: React.FC = () => {
   return (

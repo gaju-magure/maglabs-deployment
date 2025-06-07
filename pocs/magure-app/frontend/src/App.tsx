@@ -1,21 +1,81 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+
 import { Login } from "@/pages/Login";
-import { TenantsPage } from "@/pages/SuperAdmin/TenantsPage";
-import { OnboardingPage } from "@/pages/SuperAdmin/OnboardingPage";
-import { UsersPage } from "@/pages/SuperAdmin/UsersPage";
-import { ContentWallPage } from "@/pages/TenantAdmin/ContentWallPage";
-import { UsersPage as TenantUsersPage } from "@/pages/TenantAdmin/UsersPage";
-import { IdeasPage } from "@/pages/TenantUser/IdeasPage";
+import { TenantsPage } from "@/pages/Dashboard/TenantsPage";
+import { OnboardingPage } from "@/pages/Dashboard/OnboardingPage";
+import { UsersPage } from "@/pages/Dashboard/UserPage";
+import { ContentWallPage } from "@/pages/Dashboard/ContentWallPage";
+import { IdeasPage } from "@/pages/Dashboard/IdeasPage";
 
 const queryClient = new QueryClient();
+
+const RoleAwareDashboardRoutes = () => {
+  const { user } = useAuth();
+
+  if (!user) return null;
+
+  const getDefaultRoute = () => {
+    switch (user.role) {
+      case "superadmin":
+        return "/dashboard/tenants";
+      case "tenant_admin":
+        return "/dashboard/content";
+      case "tenant_user":
+        return "/dashboard/ideas";
+      default:
+        return "/unauthorized";
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <Routes>
+        {/* Default redirection for bare /dashboard */}
+        <Route index element={<Navigate to={getDefaultRoute()} replace />} />
+
+        {/* Super Admin Routes */}
+        {user.role === "superadmin" && (
+          <>
+            <Route path="tenants" element={<TenantsPage />} />
+            <Route path="onboarding" element={<OnboardingPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="settings" element={
+              <div className="p-8 text-center text-gray-600">
+                Site Settings page - Coming soon
+              </div>
+            } />
+            <Route path="*" element={<Navigate to="/dashboard/tenants" replace />} />
+          </>
+        )}
+
+        {/* Tenant Admin Routes */}
+        {user.role === "tenant_admin" && (
+          <>
+            <Route path="content" element={<ContentWallPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="ideas" element={<IdeasPage />} />
+            <Route path="*" element={<Navigate to="/dashboard/content" replace />} />
+          </>
+        )}
+
+        {/* Tenant User Routes */}
+        {user.role === "tenant_user" && (
+          <>
+            <Route path="ideas" element={<IdeasPage />} />
+            <Route path="*" element={<Navigate to="/dashboard/ideas" replace />} />
+          </>
+        )}
+      </Routes>
+    </DashboardLayout>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -26,62 +86,44 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
-            
-            {/* Super Admin Routes */}
-            <Route path="/dashboard/*" element={
-              <ProtectedRoute allowedRoles={['superadmin']}>
-                <DashboardLayout>
-                  <Routes>
-                    <Route path="users" element={<UsersPage />} />
-                    <Route path="tenants" element={<TenantsPage />} />
-                    <Route path="onboarding" element={<OnboardingPage />} />
-                    <Route path="settings" element={
-                      <div className="p-8 text-center text-gray-600">
-                        Site Settings page - Coming soon
-                      </div>
-                    } />
-                    <Route path="*" element={<Navigate to="/dashboard/tenants" replace />} />
-                  </Routes>
-                </DashboardLayout>
-              </ProtectedRoute>
-            } />
-            
-            {/* Tenant Admin Routes */}
-            <Route path="/tenant/*" element={
-              <ProtectedRoute allowedRoles={['tenant_admin', 'tenant_user']}>
-                <DashboardLayout>
-                  <Routes>
-                    <Route path="content" element={<ContentWallPage />} />
-                    <Route path="users" element={<TenantUsersPage />} />
-                    <Route path="ideas" element={<IdeasPage />} />
-                    <Route path="*" element={<Navigate to="/tenant/content" replace />} />
-                  </Routes>
-                </DashboardLayout>
-              </ProtectedRoute>
-            } />
-            
+
+            <Route
+              path="/dashboard/*"
+              element={
+                <ProtectedRoute allowedRoles={["superadmin", "tenant_admin", "tenant_user"]}>
+                  <RoleAwareDashboardRoutes />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Unauthorized */}
+            <Route
+              path="/unauthorized"
+              element={
+                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4 text-gray-900">Unauthorized</h1>
+                    <p className="text-xl text-gray-600">You don't have permission to access this page.</p>
+                  </div>
+                </div>
+              }
+            />
+
+            {/* 404 */}
+            <Route
+              path="*"
+              element={
+                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4 text-gray-900">404</h1>
+                    <p className="text-xl text-gray-600">Page not found</p>
+                  </div>
+                </div>
+              }
+            />
+
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/login" replace />} />
-            
-            {/* Unauthorized page */}
-            <Route path="/unauthorized" element={
-              <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold mb-4 text-gray-900">Unauthorized</h1>
-                  <p className="text-xl text-gray-600">You don't have permission to access this page.</p>
-                </div>
-              </div>
-            } />
-            
-            {/* 404 page */}
-            <Route path="*" element={
-              <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold mb-4 text-gray-900">404</h1>
-                  <p className="text-xl text-gray-600">Page not found</p>
-                </div>
-              </div>
-            } />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

@@ -9,7 +9,7 @@ export const UsersPage: React.FC = () => {
   if (!user) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="h-full">
       <UserManagementTable role={user.role as UserRole} />
     </div>
   );

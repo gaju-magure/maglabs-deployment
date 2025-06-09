@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { refineIdea, scoreIdea, createIdea } from '@/services/ideasApi';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ProgressBars } from '@/components/common/ProgressBars';
+import { Send, Sparkles } from 'lucide-react';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -14,6 +15,10 @@ export const IdeaChat: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
   // Progress bar state: clarity, value, conciseness (0-100)
   const [progress, setProgress] = useState<{ clarity: number; value: number; conciseness: number }>({
     clarity: 0,
@@ -22,36 +27,62 @@ export const IdeaChat: React.FC = () => {
   });
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  }, [idea]);
+
   const handleSend = async () => {
     if (!idea.trim()) return;
     setIsLoading(true);
+    setShowError(false);
     const newMessages = [...messages, { role: 'user' as const, content: idea }];
     setMessages(newMessages);
-
-    // Call backend for refinement
-    const refined = await refineIdea(idea, newMessages.map(m => ({
-      role: m.role === 'user' ? 'user' as const : 'assistant' as const,
-      content: m.content,
-    })));
-    setMessages([...newMessages, { role: 'assistant' as const, content: refined }]);
     setIdea('');
-    setIsLoading(false);
+
+    try {
+      // Call backend for refinement
+      const refined = await refineIdea(idea, newMessages.map(m => ({
+        role: m.role === 'user' ? 'user' as const : 'assistant' as const,
+        content: m.content,
+      })));
+      setMessages([...newMessages, { role: 'assistant' as const, content: refined }]);
+      
+      // Auto-score after refinement
+      // const result = await scoreIdea(idea);
+      // setProgress({
+      //   clarity: Math.round(((result.clarity || 0) / 10) * 100),
+      //   value: Math.round(((result.creativity || 0) / 10) * 100),
+      //   conciseness: Math.round(((result.feasibility || result.relevance || 0) / 10) * 100),
+      // });
+    } catch (error) {
+      setShowError(true);
+      setMessages([...newMessages, { 
+        role: 'assistant' as const, 
+        content: 'Sorry, there was an error refining your idea. Please try again later.' 
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleScore = async () => {
-    if (!messages.length) return;
-    setIsLoading(true);
-    const lastUserIdea = messages.filter(m => m.role === 'user').slice(-1)[0]?.content;
-    if (!lastUserIdea) return;
-    const result = await scoreIdea(lastUserIdea);
-    // Map backend scores (1-10) to 0-100% for progress bars
-    setProgress({
-      clarity: Math.round(((result.clarity || 0) / 10) * 100),
-      value: Math.round(((result.creativity || 0) / 10) * 100),
-      conciseness: Math.round(((result.feasibility || result.relevance || 0) / 10) * 100),
-    });
-    setIsLoading(false);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
+
 
   // Submit idea to backend
   const handleSubmitIdea = async () => {
@@ -74,70 +105,146 @@ export const IdeaChat: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-center justify-center p-0 m-0">
-      <div className="w-full max-w-2xl flex flex-col items-center justify-center min-h-screen">
-        {/* Centered ChatGPT-style prompt */}
+    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
+      <div className="w-full max-w-3xl flex flex-col items-center justify-between h-full p-6">
+        {/* Centered prompt */}
         <div className="flex flex-col items-center justify-center flex-1 w-full">
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8 mt-24 text-center">What can I help with?</h2>
+          {messages.length === 0 && (
+            <div className="text-center mb-8 animate-in fade-in duration-500">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-gradient-to-br from-[#FDA052] via-[#B96AF7] via-[#3077F3] to-[#41E6F8] p-[2px]">
+                <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-transparent bg-gradient-to-br from-[#FDA052] via-[#B96AF7] to-[#3077F3] bg-clip-text" />
+                </div>
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2" style={{ fontFamily: 'Satoshi, sans-serif' }}>What can I help with?</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-sm" style={{ fontFamily: 'Satoshi, sans-serif' }}>Share your idea and I'll help refine it</p>
+            </div>
+          )}
+          
           {/* Progress Bars */}
-          <ProgressBars
-            clarity={progress.clarity}
-            value={progress.value}
-            conciseness={progress.conciseness}
-          />
+          {(progress.clarity > 0 || progress.value > 0 || progress.conciseness > 0) && (
+            <div className="animate-in slide-in-from-top duration-500">
+              <ProgressBars
+                clarity={progress.clarity}
+                value={progress.value}
+                conciseness={progress.conciseness}
+              />
+            </div>
+          )}
           {/* Chat area */}
-          <div className="w-full max-w-2xl flex-1 flex flex-col justify-end">
-            <div className="flex-1 flex flex-col justify-end">
-              <div className="w-full flex flex-col gap-2">
-                {messages.length === 0 && (
-                  <div className="text-gray-400 text-center py-12 text-lg">Ask anything</div>
-                )}
+          <div className="w-full flex-1 flex flex-col justify-end min-h-0">
+            <div className="flex-1 flex flex-col justify-end overflow-y-auto scrollbar-thin scrollbar-thumb-rounded scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+              <div className="w-full flex flex-col gap-4 py-4">
                 {messages.map((msg, idx) => (
-                  <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`rounded-2xl px-4 py-2 max-w-[80%] ${msg.role === 'user' ? 'bg-gray-100 text-gray-900' : 'bg-gray-200 text-gray-700'}`}>
-                      <span>{msg.content}</span>
+                  <div 
+                    key={idx} 
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom duration-300`}
+                    style={{ animationDelay: `${idx * 50}ms` }}
+                  >
+                    <div className={`rounded-2xl px-5 py-3 max-w-[85%] shadow-sm ${
+                      msg.role === 'user' 
+                        ? 'bg-gradient-to-r from-[#FDA052] to-[#B96AF7] text-white' 
+                        : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700'
+                    }`}>
+                      <span style={{ fontFamily: 'Satoshi, sans-serif' }} className="leading-relaxed">
+                        {msg.content}
+                      </span>
                     </div>
                   </div>
                 ))}
+                {isLoading && (
+                  <div className="flex justify-start animate-pulse">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl px-5 py-3 border border-gray-200 dark:border-gray-700">
+                      <div className="flex space-x-2">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
             </div>
+            {/* Error message */}
+            {showError && (
+              <div className="w-full animate-in slide-in-from-bottom duration-300">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-sm text-red-600 dark:text-red-400" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  Sorry, there was an error refining your idea. Please try again later.
+                </div>
+              </div>
+            )}
+            
             {/* Input bar */}
-            <div className="w-full flex items-center gap-2 mt-8">
-              <Textarea
-                value={idea}
-                onChange={e => setIdea(e.target.value)}
-                placeholder="Ask anything"
-                rows={1}
-                className="flex-1 bg-white text-gray-900 border border-gray-300 rounded-2xl px-4 py-3"
-                disabled={isLoading || submitting}
-                style={{ minHeight: 48, maxHeight: 120 }}
-              />
-              <Button
-                onClick={handleSend}
-                disabled={isLoading || !idea.trim() || submitting}
-                className="rounded-full bg-gray-200 text-gray-900 px-4 py-3"
-                style={{ minWidth: 48, minHeight: 48 }}
-              >
-                {isLoading ? '...' : (
-                  <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" className="inline-block">
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                  </svg>
-                )}
-              </Button>
+            <div className="w-full mt-6">
+              <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transition-all duration-200 focus-within:shadow-xl focus-within:border-[#B96AF7]">
+                <textarea
+                  ref={textareaRef}
+                  value={idea}
+                  onChange={e => setIdea(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={messages.length === 0 ? "Share your idea..." : "Continue the conversation..."}
+                  className="w-full bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-2xl px-5 py-4 pr-14 resize-none focus:outline-none"
+                  disabled={isLoading || submitting}
+                  style={{ 
+                    minHeight: 56,
+                    maxHeight: 120,
+                    fontFamily: 'Satoshi, sans-serif'
+                  }}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={isLoading || !idea.trim() || submitting}
+                  className="absolute right-2 bottom-2 p-3 rounded-xl bg-gradient-to-r from-[#FDA052] to-[#B96AF7] text-white transition-all duration-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                Press Enter to send, Shift + Enter for new line
+              </p>
             </div>
           </div>
         </div>
-        {/* Large Submit Button */}
-        <div className="w-full flex justify-center mt-8 mb-8">
-          <Button
-            onClick={handleSubmitIdea}
-            disabled={submitting || messages.length === 0}
-            className="w-full max-w-md py-4 text-lg font-semibold rounded-2xl bg-gradient-to-r from-blue-600 to-green-500 text-white shadow-lg"
-            style={{ minHeight: 56 }}
-          >
-            {submitting ? 'Submitting...' : submitSuccess ? 'Submitted!' : 'Submit Idea'}
-          </Button>
-        </div>
+        {/* Submit Button */}
+        {messages.length > 0 && (
+          <div className="w-full flex justify-center mt-8 animate-in slide-in-from-bottom duration-500">
+            <button
+              onClick={handleSubmitIdea}
+              disabled={submitting || messages.length === 0}
+              className="group relative px-8 py-4 rounded-2xl font-semibold text-white transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
+              style={{ 
+                minHeight: 56,
+                fontFamily: 'Satoshi, sans-serif',
+                background: submitting || submitSuccess ? '#10b981' : 'linear-gradient(135deg, #FDA052 0%, #B96AF7 50%, #3077F3 100%)'
+              }}
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                {submitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Submitting...
+                  </>
+                ) : submitSuccess ? (
+                  <>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Idea Submitted!
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    Submit Idea
+                  </>
+                )}
+              </span>
+              {!submitting && !submitSuccess && (
+                <div className="absolute inset-0 bg-gradient-to-r from-[#41E6F8] via-[#3077F3] to-[#B96AF7] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

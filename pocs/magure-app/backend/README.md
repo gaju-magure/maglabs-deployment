@@ -124,9 +124,20 @@ server {
 5. **Run bootstrap + migrate:**
 
    ```bash
-   python bootstrap.py
    python manage.py migrate
+   python bootstrap.py 
    ```
+
+   This will add super admin cred for admin.maglabs.local
+   Use this creds from bootstrap file to login into UI
+
+   Additionaly run the script in magure-app/add_hosts with
+   ```
+   ./add_hosts 
+   Enter subdomain (e.g. magureinc): admin
+   ```
+
+   This needs to be repeated for every subdomain/Tenant added
 
 6. **Start backend server:**
 

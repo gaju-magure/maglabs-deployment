@@ -6,6 +6,6 @@ router = DefaultRouter()
 router.register(r'ideas', IdeaViewSet, basename='idea')
 
 urlpatterns = router.urls + [
-    path('ideas/refine/', IdeaRefineAPIView.as_view(), name='idea-refine'),
-    path('ideas/score/', IdeaScoreAPIView.as_view(), name='idea-score'),
+    path('refine/', IdeaRefineAPIView.as_view(), name='idea-refine'),
+    path('score/', IdeaScoreAPIView.as_view(), name='idea-score'),
 ]

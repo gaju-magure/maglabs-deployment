@@ -36,13 +36,13 @@ export const Navbar: React.FC = () => {
         ];
       case UserRole.TenantAdmin:
         return [
-          { to: '/tenant/content', label: 'Content Wall' },
-          { to: '/tenant/users', label: 'User Management' },
-          { to: '/tenant/ideas', label: 'Idea Submission' },
+          { to: '/dashboard/content', label: 'Content Wall' },
+          { to: '/dashboard/users', label: 'User Management' },
+          { to: '/dashboard/ideas', label: 'Idea Submission' },
         ];
       case UserRole.TenantUser:
         return [
-          { to: '/tenant/ideas', label: 'Idea Submission' },
+          { to: '/dashboard/ideas', label: 'Idea Submission' },
         ];
       default:
         return [];

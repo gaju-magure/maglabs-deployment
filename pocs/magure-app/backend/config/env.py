@@ -27,8 +27,16 @@ class _CORS:
     allowed_origins   = config("CORS_ALLOWED_ORIGINS", default="*", cast=Csv())
     allow_credentials = True
 
+class _KEYS:
+    openAIKey = config("OPENAI_API_KEY")
+
+class _SERVICES:
+    ai_service_url = config("AI_SERVICE_URL")
+
 # instantiate singletons
 app  = _App()
 db   = _DB()
 jwt  = _JWT()
 cors = _CORS()
+keys = _KEYS()
+services = _SERVICES()

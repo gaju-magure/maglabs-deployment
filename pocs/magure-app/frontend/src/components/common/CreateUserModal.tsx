@@ -8,6 +8,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { UserPlus } from 'lucide-react';
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -57,82 +59,126 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Create New User</DialogTitle>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#FDA052] to-[#B96AF7] flex items-center justify-center">
+              <UserPlus className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl" style={{ fontFamily: 'Satoshi, sans-serif' }}>Create New User</DialogTitle>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1" style={{ fontFamily: 'Satoshi, sans-serif' }}>Add a new user to the system</p>
+            </div>
+          </div>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5 mt-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="first_name" style={{ fontFamily: 'Satoshi, sans-serif' }}>First Name</Label>
+              <Input
+                id="first_name"
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                placeholder="John"
+                className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
+                style={{ fontFamily: 'Satoshi, sans-serif' }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="last_name" style={{ fontFamily: 'Satoshi, sans-serif' }}>Last Name</Label>
+              <Input
+                id="last_name"
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                placeholder="Doe"
+                className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
+                style={{ fontFamily: 'Satoshi, sans-serif' }}
+              />
+            </div>
+          </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="username" style={{ fontFamily: 'Satoshi, sans-serif' }}>Username</Label>
             <Input
               id="username"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              placeholder="Username"
+              placeholder="johndoe"
               required
+              className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
+              style={{ fontFamily: 'Satoshi, sans-serif' }}
             />
           </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" style={{ fontFamily: 'Satoshi, sans-serif' }}>Email Address</Label>
             <Input
               id="email"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="Email"
+              placeholder="john.doe@example.com"
               required
+              className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
+              style={{ fontFamily: 'Satoshi, sans-serif' }}
             />
           </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" style={{ fontFamily: 'Satoshi, sans-serif' }}>Password</Label>
             <Input
               id="password"
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="Password"
+              placeholder="••••••••"
               required
+              className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
+              style={{ fontFamily: 'Satoshi, sans-serif' }}
             />
           </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="first_name">First Name</Label>
-            <Input
-              id="first_name"
-              value={formData.first_name}
-              onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-              placeholder="First Name"
-            />
+            <Label htmlFor="role" style={{ fontFamily: 'Satoshi, sans-serif' }}>User Role</Label>
+            <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })} required>
+              <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="superadmin" style={{ fontFamily: 'Satoshi, sans-serif' }}>Super Admin</SelectItem>
+                <SelectItem value="tenant_admin" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tenant Admin</SelectItem>
+                <SelectItem value="tenant_user" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tenant User</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="last_name">Last Name</Label>
-            <Input
-              id="last_name"
-              value={formData.last_name}
-              onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-              placeholder="Last Name"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <select
-              id="role"
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              className="border px-2 py-1 rounded w-full"
-              required
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onClose} 
+              disabled={isSubmitting}
+              className="rounded-xl border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+              style={{ fontFamily: 'Satoshi, sans-serif' }}
             >
-              <option value="">Select Role</option>
-              <option value="superadmin">Super Admin</option>
-              <option value="tenant_admin">Tenant Admin</option>
-              <option value="tenant_user">Tenant User</option>
-            </select>
-          </div>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create User'}
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="rounded-xl bg-gradient-to-r from-[#FDA052] to-[#B96AF7] text-white hover:shadow-lg transition-all duration-200 disabled:opacity-50"
+              style={{ fontFamily: 'Satoshi, sans-serif' }}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Create User
+                </>
+              )}
             </Button>
           </div>
         </form>

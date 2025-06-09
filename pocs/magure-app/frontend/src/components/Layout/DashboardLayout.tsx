@@ -10,10 +10,10 @@ interface DashboardLayoutProps {
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gray-50">
-        <div className="flex-1 flex flex-col">
+      <div className="h-screen flex w-full bg-gray-50 overflow-hidden">
+        <div className="flex-1 flex flex-col h-full">
           <Navbar />
-          <main className="flex-1 p-6">
+          <main className="flex-1 overflow-hidden">
             {children}
           </main>
         </div>

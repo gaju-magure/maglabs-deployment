@@ -47,7 +47,6 @@ db.sqlite3-journal
 
 # If you store Django SECRET_KEY or DEBUG settings in a .env file:
 .env
-.env.*
 
 # Media/uploads (if you don’t want to commit user-uploaded files)
 media/

@@ -1,8 +1,9 @@
 Django
 django-tenants
-psycopg2-binary        # PostgreSQL driver
-djangorestframework    # we’ll expose APIs
-django-cors-headers    # to allow our React app (localhost:3000) to talk
-python-decouple        # for env vars (optional but recommended)
-djangorestframework-simplejwt  # JWT authentication
-openai  # OpenAI API integration
+django-extensions
+psycopg2-binary
+djangorestframework
+django-cors-headers
+python-decouple
+djangorestframework-simplejwt
+openai

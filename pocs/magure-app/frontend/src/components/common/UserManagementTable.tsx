@@ -21,7 +21,6 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ role }
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        debugger;
         const fetchedUsers = await getUsers()
         setUsers(fetchedUsers.results); // handle paginated or non-paginated
       } finally {

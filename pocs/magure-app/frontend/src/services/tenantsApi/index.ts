@@ -1,9 +1,9 @@
-const API_BASE_URL = `http://${window.location.hostname}:8000`;
+import { getBaseUrl } from "@/lib/utils";
 
 export interface CreateTenantRequest {
   name: string;
   schema_name: string;
-  domain: string;
+  domain_prefix: string;
   admin_email: string;
   admin_password: string;
 }
@@ -26,7 +26,7 @@ function getAuthHeaders(): HeadersInit {
 }
 
 export async function getTenants(): Promise<Tenant[]> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/tenants/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/tenants/`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -39,7 +39,7 @@ export async function getTenants(): Promise<Tenant[]> {
 }
 
 export async function createTenant(tenantData: CreateTenantRequest): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/tenants/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/tenants/`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(tenantData),

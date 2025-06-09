@@ -1,145 +1,156 @@
+Here’s an extended version of your **README** that incorporates your local development enhancements — including the automated `/etc/hosts` entry and NGINX reverse proxy setup scripts.
+
+---
+
 # Magure Backend (Django Tenant)
 
 This is the backend service for the Magure application, built with Django and designed for multi-tenant support.
 
 ## Features
 
-- Django-based backend
-- Multi-tenant architecture
-- PostgreSQL database
-- Bootstrap step (`bootstrap.py`) runs before app start
-- Docker and docker-compose support
+* Django-based backend
+* Multi-tenant architecture
+* PostgreSQL database
+* Bootstrap step (`bootstrap.py`) runs before app start
+* Docker and docker-compose support
+* Local subdomain proxying with NGINX and automatic host setup scripts
 
 ---
 
 ## Prerequisites
 
-- Python 3.11+
-- PostgreSQL 15+
-- (Recommended) Docker & docker-compose
+* Python 3.11+
+* PostgreSQL 15+
+* Homebrew (on macOS for local NGINX via brew)
+* (Recommended) Docker & docker-compose
+* Local `nginx` installed and accessible via `brew services start nginx` or `/opt/homebrew/bin/nginx`
 
 ---
 
-## Local Development
+## Local Domain & NGINX Setup (for subdomain simulation)
 
-1. **Clone the repository and navigate to backend:**
+This project supports simulating tenant-based subdomains (e.g., `magureinc.maglabs.api`) via local NGINX proxying and host mapping.
+
+### 🛠 1. Add Host Entries
+
+Run this script to add tenant domains to your local `/etc/hosts` file:
+
+```bash
+./scripts/add-local-host-entry.sh
+```
+
+You'll be prompted to enter a subdomain name (e.g., `magureinc`) — this will add entries like:
+
+```
+127.0.0.1 magureinc.maglabs.local
+127.0.0.1 magureinc.maglabs.api
+```
+
+---
+
+### 🌐 2. Set Up Local NGINX Reverse Proxy
+
+To simulate backend/frontend separation with wildcard subdomains:
+
+```bash
+../setup-maglab-local.sh
+```
+
+This script:
+
+* Copies your project’s `nginx.conf` into `/etc/nginx/sites-available`
+* Symlinks it to `/etc/nginx/sites-enabled`
+* Patches the global `nginx.conf` (Homebrew path) to include that directory
+* Tests config and starts/reloads nginx
+
+#### Sample nginx.conf:
+
+```nginx
+# Proxy for frontend
+server {
+    listen 80;
+    server_name *.maglabs.local;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+# Proxy for backend API
+server {
+    listen 80;
+    server_name *.maglabs.api;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+> Ensure the frontend runs on `localhost:8080` and the backend on `localhost:8000`.
+
+---
+
+## Local Development (Backend)
+
+1. **Navigate to backend directory:**
+
    ```bash
    cd pocs/magure-app/backend
    ```
 
-2. **Create and activate a virtual environment:**
+2. **Set up and activate virtual environment:**
+
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
    ```
 
 3. **Install dependencies:**
+
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Set up environment variables:**
-   - Copy `.env.example` to `.env` and update as needed (if `.env.example` exists).
-   - Ensure your `.env` contains correct PostgreSQL connection details.
+4. **Configure `.env`:**
+   Copy `.env.example` → `.env` and edit DB settings.
 
-5. **Run the bootstrap step:**
+5. **Run bootstrap + migrate:**
+
    ```bash
    python bootstrap.py
-   ```
-
-6. **Apply migrations:**
-   ```bash
    python manage.py migrate
    ```
 
-7. **Run the development server:**
+6. **Start backend server:**
+
    ```bash
    python manage.py runserver 0.0.0.0:8000
    ```
+
+## Scripts Directory
+
+* `root/pocs/setup-maglab-local.sh`   — Sets up NGINX reverse proxy using wildcard domains | one time
+* `root/pocs/magure-app/add-hosts.sh` — Adds entries to `/etc/hosts` for frontend/backend domains | Need to run after creating tenant
 
 ---
 
 ## Running with Docker
 
-1. **Build the Docker image:**
-   ```bash
-   docker build -t magure-backend .
-   ```
-
-2. **Run the container (ensure Postgres is running and accessible):**
-   ```bash
-   docker run --env-file .env -p 8000:8000 magure-backend
-   ```
-
-   > The container will automatically run `bootstrap.py` and migrations before starting Django.
+See previous instructions in this README under Docker & Compose.
 
 ---
 
-## Running with Docker Compose (Recommended)
+## Production Notes
 
-The project root contains a `docker-compose.yml` that orchestrates backend, frontend, and Postgres.
+In production, subdomains (like `tenant.maglabs.com`, `tenant-api.maglabs.com`) will be pointed via DNS and reverse-proxied via a proper SSL-enabled NGINX server or load balancer.
 
-1. **Navigate to the project root:**
-   ```bash
-   cd pocs/magure-app
-   ```
-
-2. **Start all services:**
-   ```bash
-   docker-compose up --build
-   ```
-
-   - Backend: http://localhost:8000
-   - Frontend: http://localhost:3000
-   - Postgres: localhost:5432
-
-3. **Environment variables:**
-   - Backend uses `backend/.env` for configuration.
-   - Database connection is set to the `postgres` service.
+These local scripts are only for development convenience and not intended for production automation.
 
 ---
-
-## Database Configuration
-
-- Default DB: `maglab`
-- User: `postgres`
-- Password: `postgres`
-- Host: `postgres` (when using docker-compose)
-- Port: `5432`
-
----
-
-## Bootstrap Step
-
-The `bootstrap.py` script is executed before the Django server starts (automatically in Docker).  
-Use this script to perform any initialization required before migrations or app start.
-
----
-
-## Useful Commands
-
-- Run tests:  
-  ```bash
-  python manage.py test
-  ```
-- Create superuser:  
-  ```bash
-  python manage.py createsuperuser
-  ```
-
----
-
-## Troubleshooting
-
-- Ensure Postgres is running and accessible with the credentials above.
-- Check `.env` for correct DB settings.
-- For Docker issues, rebuild images:  
-  ```bash
-  docker-compose build --no-cache
-  ```
-
----
-
-## License
-
-[MIT] or as specified in the project root.

@@ -57,7 +57,7 @@ export const TenantsPage: React.FC = () => {
       await createTenant({
         name: newTenant.name,
         schema_name: newTenant.schemaName,
-        domain: newTenant.primaryDomain,
+        domain_prefix: newTenant.primaryDomain,
         admin_email: newTenant.adminEmail,
         admin_password: newTenant.adminPassword,
       });

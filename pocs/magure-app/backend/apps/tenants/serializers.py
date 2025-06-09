@@ -1,7 +1,7 @@
-# backend/tenants/serializers.py
 from django_tenants.utils import get_public_schema_name, schema_context
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.utils.text import slugify
 
 from .models import Tenant, Domain
 
@@ -9,30 +9,44 @@ User = get_user_model()
 
 class TenantCreateSerializer(serializers.Serializer):
     name           = serializers.CharField(max_length=255)
-    schema_name    = serializers.CharField(max_length=255)
-    domain         = serializers.CharField(max_length=255)
+    domain_prefix  = serializers.CharField(max_length=64)
     admin_email    = serializers.EmailField(write_only=True)
     admin_password = serializers.CharField(write_only=True, min_length=8)
 
-    def validate_schema_name(self, value):
-        public_name = get_public_schema_name()
-        if value == public_name:
-            raise serializers.ValidationError(f"'{public_name}' is reserved.")
-        if Tenant.objects.filter(schema_name=value).exists():
-            raise serializers.ValidationError(f"Schema '{value}' already exists.")
-        return value
+    def validate_domain_prefix(self, value):
+        prefix = slugify(value)
+        full_domain = f"{prefix}.maglabs.api"
 
-    def validate_domain(self, value):
-        if Domain.objects.filter(domain=value).exists():
-            raise serializers.ValidationError(f"Domain '{value}' is already taken.")
-        return value
+        if Domain.objects.filter(domain=full_domain).exists():
+            raise serializers.ValidationError(f"Domain '{full_domain}' is already taken.")
+
+        return prefix
+
+    def validate(self, data):
+        prefix = data["domain_prefix"]
+        schema_name = slugify(prefix)
+        public_schema = get_public_schema_name()
+
+        if schema_name == public_schema:
+            raise serializers.ValidationError({
+                "domain_prefix": f"The derived schema name '{schema_name}' is reserved."
+            })
+
+        if Tenant.objects.filter(schema_name=schema_name).exists():
+            raise serializers.ValidationError({
+                "domain_prefix": f"A tenant with derived schema name '{schema_name}' already exists."
+            })
+
+        data["schema_name"] = schema_name
+        data["full_domain"] = f"{schema_name}.maglabs.api"
+        return data
 
     def create(self, validated_data):
-        name           = validated_data["name"]
-        schema_name    = validated_data["schema_name"]
-        domain_str     = validated_data["domain"]
+        name        = validated_data["name"]
+        schema_name = validated_data["schema_name"]
+        domain_str  = validated_data["full_domain"]
 
-        # 1) Create the Tenant → auto-creates schema & migrations
+        # 1) Create the Tenant (automatically creates schema and runs migrations)
         tenant = Tenant(schema_name=schema_name, name=name)
         tenant.save()
 

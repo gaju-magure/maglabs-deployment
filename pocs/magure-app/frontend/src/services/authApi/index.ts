@@ -1,4 +1,4 @@
-const API_BASE_URL = `http://${window.location.hostname}:8000`;
+import { getBaseUrl } from "@/lib/utils";
 
 export interface LoginRequest {
   username: string;
@@ -11,7 +11,7 @@ export interface LoginResponse {
 }
 
 export async function login(credentials: LoginRequest): Promise<LoginResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/accounts/login/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/accounts/login/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

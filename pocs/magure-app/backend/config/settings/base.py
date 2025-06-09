@@ -88,6 +88,14 @@ DATABASE_ROUTERS = ["django_tenants.routers.TenantSyncRouter"]
 
 # ---------- CORS (to allow React) ----------
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",  # 🔥 this is essential
+    "PATCH",
+    "POST",
+    "PUT",
+]
 
 # CORS_ALLOWED_ORIGINS = cors.allowed_origins
 

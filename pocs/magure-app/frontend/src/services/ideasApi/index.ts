@@ -1,4 +1,4 @@
-const API_BASE_URL = `http://${window.location.hostname}:8000`;
+import { getBaseUrl } from "@/lib/utils";
 
 export interface Idea {
   id: string;
@@ -29,7 +29,7 @@ function getAuthHeaders(): HeadersInit {
 }
 
 export async function listIdeas(): Promise<Idea[]> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/ideas/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -40,7 +40,7 @@ export async function listIdeas(): Promise<Idea[]> {
 }
 
 export async function createIdea(data: CreateIdeaRequest): Promise<Idea> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/ideas/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -52,7 +52,7 @@ export async function createIdea(data: CreateIdeaRequest): Promise<Idea> {
 }
 
 export async function updateIdea(id: string, data: Partial<CreateIdeaRequest>): Promise<Idea> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/ideas/${id}/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/${id}/`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -64,7 +64,7 @@ export async function updateIdea(id: string, data: Partial<CreateIdeaRequest>): 
 }
 
 export async function deleteIdea(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/ideas/${id}/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/${id}/`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
@@ -74,7 +74,7 @@ export async function deleteIdea(id: string): Promise<void> {
 }
 
 export async function refineIdea(idea_text: string, conversation_history?: any[]): Promise<string> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/ideas/refine/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/refine/`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ idea_text, conversation_history }),
@@ -92,7 +92,7 @@ export async function scoreIdea(idea_text: string): Promise<{
   feasibility: number;
   relevance: number;
 }> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/ideas/score/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/score/`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ idea_text }),

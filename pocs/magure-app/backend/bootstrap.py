@@ -4,7 +4,7 @@ bootstrap.py
 
 Ensures that:
   1) The “public” tenant exists (schema_name='public').
-  2) There is a Domain row admin.localhost → public.
+  2) There is a Domain row admin.maglabs → public.
   3) A superadmin user exists in the public schema.
   4) For every other tenant, ensure their primary Domain exists
      and that there is at least one tenant‐admin user in that schema.
@@ -39,8 +39,8 @@ User = get_user_model()
 
 # ─── Configuration Constants ─────────────────────────────────────────────────────
 PUBLIC_SCHEMA = get_public_schema_name()  # usually "public"
-PUBLIC_DOMAIN  = "admin.localhost"
-SUPERADMIN_USERNAME = "superadmin@admin.localhost"
+PUBLIC_DOMAIN  = "admin.maglabs.api"
+SUPERADMIN_USERNAME = "superadmin@admin.maglabs.api"
 SUPERADMIN_PASSWORD = "ChangeMe123!"  # <-- choose a secure default or read from env
 SUPERADMIN_ROLE = "superadmin"       # must match your User.role field
 
@@ -114,7 +114,7 @@ def ensure_public_tenant():
 def ensure_each_tenant():
     """
     For every tenant (excluding public):
-      - Ensure it has a primary Domain (subdomain.localhost).
+      - Ensure it has a primary Domain (subdomain.maglabs).
       - Ensure there is at least one tenant‐admin user under that schema.
     """
     all_tenants = Tenant.objects.exclude(schema_name=PUBLIC_SCHEMA)
@@ -129,7 +129,7 @@ def ensure_each_tenant():
             print(f"[ ] Tenant '{schema}': found primary domain '{domain_name}'")
         else:
             # By convention: <schema>.localhost
-            domain_name = f"{schema}.localhost"
+            domain_name = f"{schema}.maglabs"
             try:
                 Domain.objects.create(domain=domain_name, tenant=tenant, is_primary=True)
                 print(f"[+] Created Domain(domain='{domain_name}', tenant='{schema}')")

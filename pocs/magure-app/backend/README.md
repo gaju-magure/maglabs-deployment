@@ -124,12 +124,24 @@ server {
 5. **Run bootstrap + migrate:**
 
    ```bash
+   chmod +x ../add_hosts.sh ../setup-maglabs-local.sh
    python manage.py migrate
    python bootstrap.py 
    ```
 
    This will add super admin cred for admin.maglabs.local
    Use this creds from bootstrap file to login into UI
+
+   Use this creds for testing
+   ```
+   ADMIN_URL="http://admin.maglabs.local"
+   SUPERADMIN_USERNAME = "superadmin@admin.maglabs.api"
+   SUPERADMIN_PASSWORD = "ChangeMe123!"
+
+   TENANT_URL = "magureinc.maglabs.local"
+   TENANT_ADMIN_EMAIL = "admin@magureinc.maglabs.api"
+   TENANT_ADMIN_PASSWORD = "TenantAdmin123!"
+   ```
 
    Additionaly run the script in magure-app/add_hosts with
    ```
@@ -147,7 +159,7 @@ server {
 
 ## Scripts Directory
 
-* `root/pocs/setup-maglab-local.sh`   — Sets up NGINX reverse proxy using wildcard domains | one time
+* `root/pocs/magure-app/setup-maglab-local.sh`   — Sets up NGINX reverse proxy using wildcard domains | one time
 * `root/pocs/magure-app/add-hosts.sh` — Adds entries to `/etc/hosts` for frontend/backend domains | Need to run after creating tenant
 
 ---

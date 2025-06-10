@@ -147,6 +147,9 @@ server {
    ```
    ./add_hosts 
    Enter subdomain (e.g. magureinc): admin
+
+   # after adding host
+   sudo nginx -s reload
    ```
 
    This needs to be repeated for every subdomain/Tenant added

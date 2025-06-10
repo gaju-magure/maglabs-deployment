@@ -151,8 +151,6 @@ if __name__ == "__main__":
 
     run_shell_script("setup-maglabs-local.sh")
 
-    stop_nginx()
-
     run_shell_script("add_hosts.sh", stdin_input=f"{SUPERADMIN_SUBDOMAIN}\n")
     run_shell_script("add_hosts.sh", stdin_input=f"{TENANT_SUBDOMAIN}\n")
 

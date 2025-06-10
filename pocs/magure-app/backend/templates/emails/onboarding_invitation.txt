@@ -1,0 +1,25 @@
+Welcome to {{ company_name }}!
+
+Hello there!
+
+Congratulations! Your {{ company_name }} tenant "{{ tenant_name }}" has been successfully created. You're just a few steps away from getting started with your new workspace.
+
+As the designated admin for {{ tenant_name }}, you'll need to complete a quick setup process to personalize your account and configure your workspace preferences.
+
+COMPLETE YOUR SETUP
+{{ onboarding_url }}
+
+What's Next?
+Click the link above to access your personalized setup wizard. You'll be guided through:
+- Setting up your admin profile
+- Configuring company details  
+- Choosing your preferences
+- Accessing your dashboard
+
+SECURITY NOTE: This invitation link is valid for {{ token_expiry_hours }} hours and can only be used once. If you need a new invitation, please contact your system administrator.
+
+If you have any questions or need assistance, don't hesitate to reach out to our support team at {{ support_email }}.
+
+---
+This email was sent to {{ admin_email }} for {{ tenant_name }}.
+© {{ company_name }}. All rights reserved.

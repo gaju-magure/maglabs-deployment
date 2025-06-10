@@ -16,6 +16,7 @@ interface PresetDataTableProps<T> {
   actionHandlers: {
     onEdit?: (item: T) => void;
     onDelete?: (item: T) => void;
+    onSendInvitation?: (item: T) => void;
     canEdit?: boolean;
     canDelete?: boolean;
   };

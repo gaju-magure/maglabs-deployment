@@ -10,12 +10,13 @@ export interface TableColumn<T> {
 }
 
 export interface TableAction<T> {
-  label: string;
-  icon?: ReactNode;
+  label: string | ((item: T) => string);
+  icon?: ReactNode | ((item: T) => ReactNode);
   onClick: (item: T) => void;
   variant?: 'default' | 'outline' | 'ghost' | 'destructive';
   className?: string;
-  title?: string;
+  title?: string | ((item: T) => string);
+  disabled?: boolean | ((item: T) => boolean);
 }
 
 interface BaseTableProps<T> {
@@ -68,18 +69,31 @@ export function BaseTable<T>({
               {actions.length > 0 && (
                 <td className="py-4 px-4">
                   <div className="flex justify-end gap-2">
-                    {actions.map((action, index) => (
-                      <Button
-                        key={index}
-                        size="sm"
-                        variant={action.variant || 'ghost'}
-                        onClick={() => action.onClick(item)}
-                        className={`rounded-lg ${action.className || ''}`}
-                        title={action.title}
-                      >
-                        {action.icon}
-                      </Button>
-                    ))}
+                    {actions.map((action, index) => {
+                      const isDisabled = typeof action.disabled === 'function' 
+                        ? action.disabled(item) 
+                        : action.disabled || false;
+                      const title = typeof action.title === 'function' 
+                        ? action.title(item) 
+                        : action.title;
+                      const icon = typeof action.icon === 'function' 
+                        ? action.icon(item) 
+                        : action.icon;
+                      
+                      return (
+                        <Button
+                          key={index}
+                          size="sm"
+                          variant={action.variant || 'ghost'}
+                          onClick={() => action.onClick(item)}
+                          className={`rounded-lg ${action.className || ''}`}
+                          title={title}
+                          disabled={isDisabled}
+                        >
+                          {icon}
+                        </Button>
+                      );
+                    })}
                   </div>
                 </td>
               )}

@@ -64,27 +64,6 @@ def ensure_public_tenant():
             print(f"[ ] Superadmin already exists: {SUPERADMIN_USERNAME}")
 
 
-def ensure_each_tenant():
-    for tenant in Tenant.objects.exclude(schema_name=PUBLIC_SCHEMA):
-        if not Domain.objects.filter(tenant=tenant, is_primary=True).exists():
-            domain = f"{tenant.schema_name}.maglabs.api"
-            Domain.objects.create(domain=domain, tenant=tenant, is_primary=True)
-            print(f"[+] Domain created: {domain}")
-
-        with schema_context(tenant.schema_name):
-            if not User.objects.filter(role=TENANT_ADMIN_ROLE).exists():
-                User.objects.create_user(
-                    username=TENANT_ADMIN_EMAIL,
-                    email=TENANT_ADMIN_EMAIL,
-                    password=TENANT_ADMIN_PASSWORD,
-                    role=TENANT_ADMIN_ROLE,
-                    is_staff=True,
-                    is_superuser=False,
-                )
-                print(f"[+] Tenant admin created: {TENANT_ADMIN_EMAIL}")
-
-
-
 def create_bootstrap_tenant():
     if Tenant.objects.filter(schema_name=TENANT_SCHEMA).exists():
         print(f"[ ] Tenant '{TENANT_SCHEMA}' already exists.")
@@ -144,14 +123,13 @@ def start_nginx():
 if __name__ == "__main__":
     print("🚀 Bootstrapping public and default tenants...")
     ensure_public_tenant()
-    ensure_each_tenant()
-    create_bootstrap_tenant()
+    # create_bootstrap_tenant()
 
     stop_nginx()
 
     run_shell_script("setup-maglabs-local.sh")
 
     run_shell_script("add_hosts.sh", stdin_input=f"{SUPERADMIN_SUBDOMAIN}\n")
-    run_shell_script("add_hosts.sh", stdin_input=f"{TENANT_SUBDOMAIN}\n")
+    # run_shell_script("add_hosts.sh", stdin_input=f"{TENANT_SUBDOMAIN}\n")
 
     print("✅ Bootstrap complete.")

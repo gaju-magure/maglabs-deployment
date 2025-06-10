@@ -106,6 +106,16 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# ---------- Email Configuration ----------
+
+EMAIL_BACKEND = email.backend
+EMAIL_HOST = email.host
+EMAIL_PORT = email.port
+EMAIL_USE_TLS = email.use_tls
+EMAIL_HOST_USER = email.host_user
+EMAIL_HOST_PASSWORD = email.host_password
+DEFAULT_FROM_EMAIL = email.default_from
+
 # ---------- Static & Media ----------
 
 STATIC_URL = "/static/"

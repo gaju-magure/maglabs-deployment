@@ -24,7 +24,7 @@ export const tenantTablePreset: TablePresetConfig<TenantData> = {
   emptyStateDescription: 'Get started by creating your first tenant to manage organizations.',
   emptyStateIcon: <Building className="w-8 h-8 text-gray-400" />,
   columns: tenantColumns,
-  createActions: ({ onEdit, onDelete }) => createTenantActions({ onEdit, onDelete }),
+  createActions: ({ onEdit, onDelete, onSendInvitation }) => createTenantActions({ onEdit, onDelete, onSendInvitation }),
 };
 
 export const userTablePreset: TablePresetConfig<UserData> = {

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to {{ company_name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .message {
+            margin-bottom: 30px;
+            font-size: 16px;
+            line-height: 1.7;
+            color: #555;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px 0;
+            transition: transform 0.2s ease;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+            text-decoration: none;
+            color: white;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .info-box strong {
+            color: #2c3e50;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .security-note {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to {{ company_name }}!</h1>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                Hello there!
+            </div>
+            
+            <div class="message">
+                Congratulations! Your {{ company_name }} tenant <strong>{{ tenant_name }}</strong> has been successfully created. 
+                You're just a few steps away from getting started with your new workspace.
+            </div>
+            
+            <div class="message">
+                As the designated admin for <strong>{{ tenant_name }}</strong>, you'll need to complete a quick setup process 
+                to personalize your account and configure your workspace preferences.
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{ onboarding_url }}" class="cta-button">Complete Your Setup</a>
+            </div>
+            
+            <div class="info-box">
+                <strong>What's Next?</strong><br>
+                Click the button above to access your personalized setup wizard. You'll be guided through:
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Setting up your admin profile</li>
+                    <li>Configuring company details</li>
+                    <li>Choosing your preferences</li>
+                    <li>Accessing your dashboard</li>
+                </ul>
+            </div>
+            
+            <div class="security-note">
+                <strong>Security Note:</strong> This invitation link is valid for {{ token_expiry_hours }} hours and can only be used once. 
+                If you need a new invitation, please contact your system administrator.
+            </div>
+            
+            <div class="message">
+                If you have any questions or need assistance, don't hesitate to reach out to our support team at 
+                <a href="mailto:{{ support_email }}">{{ support_email }}</a>.
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This email was sent to {{ admin_email }} for {{ tenant_name }}.</p>
+            <p>© {{ company_name }}. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

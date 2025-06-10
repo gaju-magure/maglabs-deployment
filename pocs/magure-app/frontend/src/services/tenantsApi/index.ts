@@ -15,6 +15,14 @@ export interface Tenant {
   created_at: string;
   updated_at: string;
   primary_domain: string;
+  onboarding_status?: 'pending' | 'in_progress' | 'completed';
+  admin_email?: string;
+  onboarding_progress?: {
+    completion_percentage: number;
+    completed_steps: number;
+    total_steps: number;
+    current_step: string;
+  } | null;
 }
 
 function getAuthHeaders(): HeadersInit {
@@ -76,4 +84,23 @@ export async function deleteTenant(id: number): Promise<void> {
   if (!response.ok) {
     throw new Error('Failed to delete tenant');
   }
+}
+
+export async function sendOnboardingInvitation(id: number): Promise<{ 
+  message: string; 
+  email_sent: boolean; 
+  is_resend?: boolean;
+  admin_email?: string;
+  token?: string; 
+}> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/tenants/${id}/send_invitation/`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to send onboarding invitation');
+  }
+
+  return response.json();
 }

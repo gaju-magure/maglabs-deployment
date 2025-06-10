@@ -4,7 +4,8 @@ import {
   getTenants, 
   createTenant, 
   updateTenant, 
-  deleteTenant, 
+  deleteTenant,
+  sendOnboardingInvitation,
   type Tenant 
 } from '@/services/tenantsApi';
 import { TenantFormData } from '@/components/common/TenantModal';
@@ -40,7 +41,11 @@ export const useTenantManagement = () => {
       const tenantsData = await getTenants();
       const extendedTenants = tenantsData.map(tenant => ({
         ...tenant,
-        status: 'active' as const
+        status: 'active' as const,
+        // Ensure onboarding fields are preserved
+        onboarding_status: tenant.onboarding_status || 'pending',
+        onboarding_progress: tenant.onboarding_progress,
+        admin_email: tenant.admin_email
       }));
       
       setTenants(extendedTenants);
@@ -142,6 +147,33 @@ export const useTenantManagement = () => {
     setDeletingTenant(tenant);
   };
 
+  // Handle send onboarding invitation
+  const handleSendInvitation = async (tenant: ExtendedTenant) => {
+    try {
+      const result = await sendOnboardingInvitation(tenant.id);
+      
+      const actionText = result.is_resend ? 'resent' : 'sent';
+      
+      toast({
+        title: "Success",
+        description: result.email_sent 
+          ? `Onboarding invitation ${actionText} to ${result.admin_email || tenant.admin_email || 'tenant admin'}`
+          : `Onboarding invitation prepared but email delivery failed. ${result.token ? 'Manual token: ' + result.token : ''}`,
+        variant: result.email_sent ? "default" : "destructive"
+      });
+      
+      // Refresh the tenant data to get updated onboarding status
+      fetchTenants(true);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send invitation';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
   // Confirm delete tenant
   const confirmDeleteTenant = async () => {
     if (deletingTenant) {
@@ -189,6 +221,7 @@ export const useTenantManagement = () => {
   const actionHandlers = {
     onEdit: handleEditTenant,
     onDelete: handleDeleteTenant,
+    onSendInvitation: handleSendInvitation,
   };
 
   return {

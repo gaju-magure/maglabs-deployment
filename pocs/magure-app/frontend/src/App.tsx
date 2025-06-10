@@ -13,6 +13,7 @@ import { OnboardingPage } from "@/pages/Dashboard/OnboardingPage";
 import { UsersPage } from "@/pages/Dashboard/UsersPage";
 import { ContentWallPage } from "@/pages/Dashboard/ContentWallPage";
 import { IdeasPage } from "@/pages/Dashboard/IdeasPage";
+import { TenantOnboarding } from "@/pages/TenantOnboarding";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,9 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+
+            {/* Public onboarding route */}
+            <Route path="/onboarding/:token" element={<TenantOnboarding />} />
 
             <Route
               path="/dashboard/*"

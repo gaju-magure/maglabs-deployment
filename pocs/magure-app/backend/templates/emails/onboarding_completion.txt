@@ -1,0 +1,24 @@
+Setup Complete - Welcome to {{ company_name }}!
+
+Congratulations!
+
+Your {{ company_name }} workspace "{{ tenant_name }}" is now fully set up and ready to use. You've successfully completed all the onboarding steps!
+
+You can now access your personalized dashboard and start exploring all the features available to you and your team.
+
+ACCESS YOUR DASHBOARD
+{{ dashboard_url }}
+
+What You Can Do Next:
+- Explore your dashboard and available features
+- Invite team members to join your workspace  
+- Start creating and managing your projects
+- Customize your workspace settings further
+
+If you need any help getting started or have questions about using {{ company_name }}, our support team is here to help at {{ support_email }}.
+
+Welcome to {{ company_name }}! We're excited to have you on board.
+
+---
+This email was sent to {{ admin_email }} for {{ tenant_name }}.
+© {{ company_name }}. All rights reserved.

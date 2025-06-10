@@ -10,7 +10,7 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { Login } from "@/pages/Login";
 import { TenantsPage } from "@/pages/Dashboard/TenantsPage";
 import { OnboardingPage } from "@/pages/Dashboard/OnboardingPage";
-import { UsersPage } from "@/pages/Dashboard/UserPage";
+import { UsersPage } from "@/pages/Dashboard/UsersPage";
 import { ContentWallPage } from "@/pages/Dashboard/ContentWallPage";
 import { IdeasPage } from "@/pages/Dashboard/IdeasPage";
 

@@ -1,20 +1,19 @@
-
 import React from 'react';
 import { AlertBanner } from '@/components/ui/alert-banner';
-import { PresetDataTable, tenantTablePreset } from '@/components/tables';
+import { PresetDataTable, userTablePreset } from '@/components/tables';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { TenantModal } from '@/components/common/TenantModal';
-import { useTenantManagement } from '@/hooks/useTenantManagement';
+import { CreateUserModal } from '@/components/common/CreateUserModal';
+import { useUserManagement } from '@/hooks/useUserManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/enums/userRole';
 import { Trash2 } from 'lucide-react';
 
-export const TenantsPage: React.FC = () => {
+export const UsersPage: React.FC = () => {
   const { user: currentUser } = useAuth();
 
   const {
     // Data
-    tenants,
+    users,
     isLoading,
     error,
     isRefreshing,
@@ -22,36 +21,40 @@ export const TenantsPage: React.FC = () => {
 
     // Modal states
     isCreateModalOpen,
-    editingTenant,
-    deletingTenant,
+    deletingUser,
 
     // Actions
     setSearchQuery,
-    fetchTenants,
-    handleTenantSubmit,
+    fetchUsers,
+    handleCreateUser,
     openCreateModal,
     closeCreateModal,
-    confirmDeleteTenant,
-    actionHandlers,
+    confirmDeleteUser,
+    createActionHandlers,
     retryFetch,
-  } = useTenantManagement();
+  } = useUserManagement();
 
   // Determine permissions based on current user role
-  const canEdit = [UserRole.SuperAdmin].includes(
+  const canEdit = [UserRole.SuperAdmin, UserRole.TenantAdmin].includes(
     currentUser?.role as UserRole
   );
 
-  const canCreate = [UserRole.SuperAdmin].includes(
+  const canCreate = [UserRole.SuperAdmin, UserRole.TenantAdmin].includes(
     currentUser?.role as UserRole
   );
+
+  // Create action handlers with permissions
+  const actionHandlers = createActionHandlers(canEdit, canEdit);
 
   // Get dynamic title based on user role
   const getPageTitle = () => {
     switch (currentUser?.role) {
       case UserRole.SuperAdmin:
-        return 'Tenant Management';
+        return 'Superadmin User Management';
+      case UserRole.TenantAdmin:
+        return 'Tenant User Management';
       default:
-        return 'Tenant Management';
+        return 'User Management';
     }
   };
 
@@ -76,43 +79,42 @@ export const TenantsPage: React.FC = () => {
 
       {/* Data Table */}
       <PresetDataTable
-        preset={tenantTablePreset}
+        preset={userTablePreset}
         titleOverride={getPageTitle()}
-        data={tenants}
+        data={users}
         loading={isLoading}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onRefresh={() => fetchTenants(true)}
+        onRefresh={() => fetchUsers(true)}
         isRefreshing={isRefreshing}
         onCreateNew={openCreateModal}
         canCreate={canCreate}
-        getItemKey={(tenant) => tenant.id}
+        getItemKey={(user) => user.id}
         actionHandlers={actionHandlers}
         className="flex-1"
       />
 
-      {/* Create/Edit Tenant Modal */}
-      <TenantModal
+      {/* Create User Modal */}
+      <CreateUserModal
         isOpen={isCreateModalOpen}
         onClose={closeCreateModal}
-        onSubmit={handleTenantSubmit}
-        tenant={editingTenant}
+        onSubmit={handleCreateUser}
       />
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
-        open={!!deletingTenant}
-        onOpenChange={() => deletingTenant && confirmDeleteTenant()}
-        title="Delete Tenant"
+        open={!!deletingUser}
+        onOpenChange={() => deletingUser && confirmDeleteUser()}
+        title="Delete User"
         description={
           <span>
             Are you sure you want to delete{' '}
-            <strong>"{deletingTenant?.name}"</strong>?
-            This action cannot be undone and will remove all associated data.
+            <strong>"{deletingUser?.username}"</strong>?
+            This action cannot be undone and will remove all user data.
           </span>
         }
         confirmText="Delete"
-        onConfirm={confirmDeleteTenant}
+        onConfirm={confirmDeleteUser}
         variant="destructive"
         icon={<Trash2 className="h-5 w-5" />}
       />

@@ -49,3 +49,31 @@ export async function createTenant(tenantData: CreateTenantRequest): Promise<voi
     throw new Error('Failed to create tenant');
   }
 }
+
+export interface UpdateTenantRequest {
+  name?: string;
+  domain_prefix?: string;
+}
+
+export async function updateTenant(id: number, tenantData: UpdateTenantRequest): Promise<void> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/tenants/${id}/`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(tenantData),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update tenant');
+  }
+}
+
+export async function deleteTenant(id: number): Promise<void> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/tenants/${id}/`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete tenant');
+  }
+}

@@ -13,13 +13,26 @@ import { UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/enums/userRole';
 
-interface CreateUserModalProps {
+interface UserModalProps {
   isOpen: boolean;
   onClose: () => void;
+  mode: 'create' | 'edit';
+  initialData?: {
+    id?: string;
+    username: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+    job_title?: string;
+    phone_number?: string;
+    department_id?: number;
+    custom_role_id?: number;
+  };
   onSubmit: (user: {
     username: string;
     email: string;
-    password: string;
+    password?: string;
     first_name: string;
     last_name: string;
     role: string;
@@ -32,9 +45,11 @@ interface CreateUserModalProps {
   customRoles?: Array<{ id: number; name: string }>;
 }
 
-export const CreateUserModal: React.FC<CreateUserModalProps> = ({
+export const UserModal: React.FC<UserModalProps> = ({
   isOpen,
   onClose,
+  mode,
+  initialData,
   onSubmit,
   departments = [],
   customRoles = [],
@@ -101,8 +116,12 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
               <UserPlus className="w-6 h-6 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-xl" style={{ fontFamily: 'Satoshi, sans-serif' }}>Create New User</DialogTitle>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1" style={{ fontFamily: 'Satoshi, sans-serif' }}>Add a new user to the system</p>
+              <DialogTitle className="text-xl" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+              {mode === 'create' ? 'Create New User' : 'Edit User'}
+            </DialogTitle>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                {mode === 'create' ? 'Add a new user to the system' : 'Update user information'}
+              </p>
             </div>
           </div>
         </DialogHeader>
@@ -279,12 +298,12 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  Creating...
+                  {mode === 'create' ? 'Creating...' : 'Updating...'}
                 </>
               ) : (
                 <>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Create User
+                  {mode === 'create' ? 'Create User' : 'Update User'}
                 </>
               )}
             </Button>

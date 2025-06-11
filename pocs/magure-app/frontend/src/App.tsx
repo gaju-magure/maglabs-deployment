@@ -9,10 +9,10 @@ import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 
 import { Login } from "@/pages/Login";
 import { TenantsPage } from "@/pages/Dashboard/TenantsPage";
-import { OnboardingPage } from "@/pages/Dashboard/OnboardingPage";
 import { UsersPage } from "@/pages/Dashboard/UsersPage";
 import { ContentWallPage } from "@/pages/Dashboard/ContentWallPage";
 import { IdeasPage } from "@/pages/Dashboard/IdeasPage";
+import { OrganizationPage } from "@/pages/Dashboard/OrganizationPage";
 import { TenantOnboarding } from "@/pages/TenantOnboarding";
 
 const queryClient = new QueryClient();
@@ -45,7 +45,6 @@ const RoleAwareDashboardRoutes = () => {
         {user.role === "superadmin" && (
           <>
             <Route path="tenants" element={<TenantsPage />} />
-            <Route path="onboarding" element={<OnboardingPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="settings" element={
               <div className="p-8 text-center text-gray-600">
@@ -61,6 +60,7 @@ const RoleAwareDashboardRoutes = () => {
           <>
             <Route path="content" element={<ContentWallPage />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="organization" element={<OrganizationPage />} />
             <Route path="ideas" element={<IdeasPage />} />
             <Route path="*" element={<Navigate to="/dashboard/content" replace />} />
           </>

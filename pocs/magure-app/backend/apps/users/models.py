@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class User(AbstractUser):
     """
@@ -26,3 +28,53 @@ class User(AbstractUser):
 
     def is_tenant_admin(self):
         return self.role == "tenant_admin"
+
+
+class UserProfile(models.Model):
+    """Extended user profile with professional and personal information"""
+    
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='profile'
+    )
+    
+    # Professional Information
+    job_title = models.CharField(max_length=100, blank=True)
+    department = models.CharField(max_length=100, blank=True)
+    phone_number = models.CharField(max_length=20, blank=True)
+    
+    # Personal Information
+    bio = models.TextField(max_length=500, blank=True)
+    linkedin_url = models.URLField(blank=True)
+    
+    # Profile Picture
+    profile_avatar = models.ImageField(
+        upload_to='user_avatars/%Y/%m/%d/', 
+        null=True, 
+        blank=True,
+        help_text="Profile picture (max 5MB)"
+    )
+    
+    # Location & Preferences
+    timezone = models.CharField(max_length=50, default='UTC')
+    
+    # Employment Details
+    hire_date = models.DateField(null=True, blank=True)
+    manager = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='direct_reports'
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'user_profiles'
+    
+    def __str__(self):
+        return f"Profile for {self.user.get_full_name() or self.user.username}"

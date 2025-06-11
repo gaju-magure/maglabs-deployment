@@ -28,6 +28,24 @@ class User(AbstractUser):
 
     def is_tenant_admin(self):
         return self.role == "tenant_admin"
+    
+    # Link to tenant department
+    department = models.ForeignKey(
+        'tenants.TenantDepartment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='members'
+    )
+    
+    # Link to custom tenant role (in addition to base role)
+    custom_role = models.ForeignKey(
+        'tenants.TenantRole',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users'
+    )
 
 
 class UserProfile(models.Model):
@@ -78,3 +96,18 @@ class UserProfile(models.Model):
     
     def __str__(self):
         return f"Profile for {self.user.get_full_name() or self.user.username}"
+
+
+# Signal to create UserProfile automatically when User is created
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    """Create a UserProfile when a new User is created"""
+    if created:
+        UserProfile.objects.create(user=instance)
+
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    """Save the UserProfile when the User is saved"""
+    if hasattr(instance, 'profile'):
+        instance.profile.save()

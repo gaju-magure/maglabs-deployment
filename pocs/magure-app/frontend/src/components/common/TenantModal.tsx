@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2, Plus } from 'lucide-react';
+import { AvatarUpload } from '@/components/common/AvatarUpload';
 
 export interface TenantFormData {
   name: string;
@@ -26,6 +27,7 @@ export interface TenantData {
   created_at?: string;
   updated_at?: string;
   status: 'active' | 'inactive';
+  logo_url?: string;
 }
 
 interface TenantModalProps {
@@ -50,6 +52,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     status: 'active',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(tenant?.logo_url || null);
 
   const isEditMode = mode === 'edit' && tenant;
 
@@ -63,6 +66,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
           adminEmail: tenant.admin_email || '',
           status: tenant.status,
         });
+        setLogoUrl(tenant.logo_url || null);
       } else {
         setFormData({
           name: '',
@@ -70,6 +74,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
           adminEmail: '',
           status: 'active',
         });
+        setLogoUrl(null);
       }
     }
   }, [isOpen, tenant, isEditMode]);
@@ -146,7 +151,23 @@ export const TenantModal: React.FC<TenantModalProps> = ({
               style={{ fontFamily: 'Satoshi, sans-serif' }}
             />
           </div>
-          
+
+          {/* Tenant Logo Upload - only in edit mode */}
+          {isEditMode && tenant?.id && (
+            <div className="space-y-2">
+              <Label style={{ fontFamily: 'Satoshi, sans-serif' }}>Tenant Logo</Label>
+              <div className="flex justify-center">
+                <AvatarUpload
+                  currentAvatar={logoUrl}
+                  userName={formData.name}
+                  userId={tenant.id}
+                  onUploadSuccess={(url) => setLogoUrl(url)}
+                  onDeleteSuccess={() => setLogoUrl(null)}
+                  size="lg"
+                />
+              </div>
+            </div>
+          )}
           
           <div className="space-y-2">
             <Label htmlFor="primaryDomain" style={{ fontFamily: 'Satoshi, sans-serif' }}>

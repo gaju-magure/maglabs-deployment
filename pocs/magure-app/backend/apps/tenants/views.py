@@ -10,14 +10,13 @@ from django.shortcuts import get_object_or_404
 
 from .models import Tenant
 from .serializers import (
-    TenantCreateSerializer, TenantInfoSerializer, OnboardingTokenSerializer,
-    OnboardingStepSerializer, ProfileSetupSerializer, CompanyDetailsSerializer,
-    PreferencesSerializer, SendInvitationSerializer
+    TenantCreateSerializer, TenantInfoSerializer,
 )
 from .onboarding_serializers import (
-    EnhancedProfileSetupSerializer, EnhancedCompanyDetailsSerializer,
-    EnhancedPreferencesSerializer, OnboardingStatusSerializer, 
-    OnboardingStepSerializer as EnhancedOnboardingStepSerializer
+    OnboardingTokenSerializer,
+    ProfileSetupSerializer, CompanyDetailsSerializer,
+    PreferencesSerializer, OnboardingStatusSerializer, 
+    OnboardingStepSerializer
 )
 from .onboarding_models import TenantProfile, AdminProfile, WorkspacePreferences, OnboardingProgress
 from config.domain_config import get_frontend_url, get_dashboard_url
@@ -123,7 +122,6 @@ class TenantViewSet(
                     with connection.cursor() as cursor:
                         # Delete related records first (CASCADE should handle this, but being explicit)
                         cursor.execute("DELETE FROM tenants_domain WHERE tenant_id = %s", [tenant_id])
-                        cursor.execute("DELETE FROM tenants_tenantonboarding WHERE tenant_id = %s", [tenant_id])
                         cursor.execute("DELETE FROM tenant_profiles WHERE tenant_id = %s", [tenant_id])
                         cursor.execute("DELETE FROM workspace_preferences WHERE tenant_id = %s", [tenant_id])
                         cursor.execute("DELETE FROM onboarding_progress WHERE tenant_id = %s", [tenant_id])
@@ -167,7 +165,6 @@ class TenantViewSet(
         with connection.cursor() as cursor:
             # Delete related records first (domains, onboarding progress, etc.)
             cursor.execute("DELETE FROM tenants_domain WHERE tenant_id = %s", [tenant_id])
-            cursor.execute("DELETE FROM tenants_tenantonboarding WHERE tenant_id = %s", [tenant_id])
             cursor.execute("DELETE FROM tenant_profiles WHERE tenant_id = %s", [tenant_id])
             cursor.execute("DELETE FROM workspace_preferences WHERE tenant_id = %s", [tenant_id])
             cursor.execute("DELETE FROM onboarding_progress WHERE tenant_id = %s", [tenant_id])
@@ -296,7 +293,7 @@ class OnboardingProfileSetupView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
-        serializer = EnhancedProfileSetupSerializer(data=request.data)
+        serializer = ProfileSetupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         token = serializer.validated_data['token']
@@ -355,7 +352,7 @@ class OnboardingCompanyDetailsView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
-        serializer = EnhancedCompanyDetailsSerializer(data=request.data)
+        serializer = CompanyDetailsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         token = serializer.validated_data['token']
@@ -412,7 +409,7 @@ class OnboardingPreferencesView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
-        serializer = EnhancedPreferencesSerializer(data=request.data)
+        serializer = PreferencesSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         token = serializer.validated_data['token']
@@ -567,7 +564,7 @@ class OnboardingStepManagementView(APIView):
     
     def post(self, request):
         """Complete or update a specific onboarding step"""
-        serializer = EnhancedOnboardingStepSerializer(data=request.data)
+        serializer = OnboardingStepSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         token = serializer.validated_data['token']

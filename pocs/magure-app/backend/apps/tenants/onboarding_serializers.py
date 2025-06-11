@@ -12,7 +12,6 @@ from datetime import datetime
 
 User = get_user_model()
 
-
 class OnboardingTokenSerializer(serializers.Serializer):
     """Serializer for onboarding token verification"""
     token = serializers.UUIDField()
@@ -27,7 +26,7 @@ class OnboardingTokenSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid onboarding token.")
 
 
-class EnhancedProfileSetupSerializer(serializers.Serializer):
+class ProfileSetupSerializer(serializers.Serializer):
     """Enhanced serializer for admin profile setup"""
     token = serializers.UUIDField()
     
@@ -81,8 +80,7 @@ class EnhancedProfileSetupSerializer(serializers.Serializer):
         
         return data
 
-
-class EnhancedCompanyDetailsSerializer(serializers.Serializer):
+class CompanyDetailsSerializer(serializers.Serializer):
     """Enhanced serializer for company details"""
     token = serializers.UUIDField()
     
@@ -148,7 +146,7 @@ class EnhancedCompanyDetailsSerializer(serializers.Serializer):
         return value
 
 
-class EnhancedPreferencesSerializer(serializers.Serializer):
+class PreferencesSerializer(serializers.Serializer):
     """Enhanced serializer for workspace preferences"""
     token = serializers.UUIDField()
     

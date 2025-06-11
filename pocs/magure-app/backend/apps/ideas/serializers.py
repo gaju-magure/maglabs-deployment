@@ -7,8 +7,7 @@ class IdeaListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Idea
         fields = [
-            'id', 'title', 'status', 'created_at', 'updated_at', 'user_email',
-            'clarity_score', 'creativity_score', 'feasibility_score', 'relevance_score'
+            'id', 'title', 'status', 'created_at', 'updated_at', 'user_email'
         ]
 
 class IdeaDetailSerializer(serializers.ModelSerializer):
@@ -17,8 +16,7 @@ class IdeaDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Idea
         fields = [
-            'id', 'title', 'description', 'status', 'created_at', 'updated_at', 'user_email',
-            'clarity_score', 'creativity_score', 'feasibility_score', 'relevance_score'
+            'id', 'title', 'description', 'status', 'created_at', 'updated_at', 'user_email'
         ]
 
 class IdeaCreateSerializer(serializers.ModelSerializer):

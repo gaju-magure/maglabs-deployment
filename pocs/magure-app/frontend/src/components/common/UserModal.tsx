@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/enums/userRole';
+import { AvatarUpload } from '@/components/common/AvatarUpload';
 
 interface UserModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ interface UserModalProps {
     phone_number?: string;
     department_id?: number;
     custom_role_id?: number;
+    avatar_url?: string;
   };
   onSubmit: (user: {
     username: string;
@@ -72,6 +74,7 @@ export const UserModal: React.FC<UserModalProps> = ({
     custom_role_id: initialData?.custom_role_id || undefined,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialData?.avatar_url || null);
 
   // Update form data when initialData changes (for edit mode)
   useEffect(() => {
@@ -88,6 +91,7 @@ export const UserModal: React.FC<UserModalProps> = ({
         department_id: initialData.department_id || undefined,
         custom_role_id: initialData.custom_role_id || undefined,
       });
+      setAvatarUrl(initialData.avatar_url || null);
     } else if (mode === 'create') {
       setFormData({
         username: '',
@@ -102,6 +106,7 @@ export const UserModal: React.FC<UserModalProps> = ({
         department_id: undefined,
         custom_role_id: undefined,
       });
+      setAvatarUrl(null);
     }
   }, [mode, initialData]);
 
@@ -193,6 +198,23 @@ export const UserModal: React.FC<UserModalProps> = ({
               />
             </div>
           </div>
+
+          {/* Profile Image Upload */}
+          {mode === 'edit' && initialData?.id && (
+            <div className="space-y-2">
+              <Label style={{ fontFamily: 'Satoshi, sans-serif' }}>Profile Picture</Label>
+              <div className="flex justify-center">
+                <AvatarUpload
+                  currentAvatar={avatarUrl}
+                  userName={`${formData.first_name} ${formData.last_name}`}
+                  userId={parseInt(initialData.id)}
+                  onUploadSuccess={(url) => setAvatarUrl(url)}
+                  onDeleteSuccess={() => setAvatarUrl(null)}
+                  size="lg"
+                />
+              </div>
+            </div>
+          )}
           
           <div className="space-y-2">
             <Label htmlFor="username" style={{ fontFamily: 'Satoshi, sans-serif' }}>Username</Label>

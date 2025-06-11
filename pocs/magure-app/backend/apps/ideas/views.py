@@ -2,7 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Idea
+from .models import Idea, IdeaLike
 from .serializers import (
     IdeaListSerializer,
     IdeaDetailSerializer,
@@ -68,6 +68,41 @@ class IdeaViewSet(viewsets.ModelViewSet):
         
         serializer = IdeaListSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def like(self, request, pk=None):
+        idea = self.get_object()
+        like, created = IdeaLike.objects.get_or_create(
+            idea=idea,
+            user=request.user
+        )
+        
+        if created:
+            message = "Idea liked successfully"
+        else:
+            message = "Already liked"
+            
+        serializer = IdeaDetailSerializer(idea, context={'request': request})
+        return Response({
+            'message': message,
+            'idea': serializer.data
+        })
+
+    @action(detail=True, methods=['delete'])
+    def unlike(self, request, pk=None):
+        idea = self.get_object()
+        try:
+            like = IdeaLike.objects.get(idea=idea, user=request.user)
+            like.delete()
+            message = "Idea unliked successfully"
+        except IdeaLike.DoesNotExist:
+            message = "Like not found"
+            
+        serializer = IdeaDetailSerializer(idea, context={'request': request})
+        return Response({
+            'message': message,
+            'idea': serializer.data
+        })
 
 class IdeaRefineAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]

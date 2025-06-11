@@ -44,15 +44,3 @@ class IdeaRefineAPIView(APIView):
         refined = service.refine_idea(idea_text, conversation_history)
         return Response({"refined_idea": refined})
 
-class IdeaScoreAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        idea_text = request.data.get("idea_text")
-        if not idea_text:
-            return Response({"error": "idea_text is required"}, status=status.HTTP_400_BAD_REQUEST)
-        service = OpenAIService()
-        scores = service.score_idea(idea_text)
-        if scores is None:
-            return Response({"error": "Failed to score idea"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        return Response({"scores": scores})

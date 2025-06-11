@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Idea
@@ -31,6 +32,22 @@ class IdeaViewSet(viewsets.ModelViewSet):
         elif self.action in ['update', 'partial_update']:
             return IdeaUpdateSerializer
         return IdeaDetailSerializer
+
+    @action(detail=True, methods=['post'])
+    def toggle_pin(self, request, pk=None):
+        # Only tenant admins can pin/unpin ideas
+        if request.user.role not in ['superadmin', 'tenant_admin']:
+            return Response(
+                {"error": "Only tenant admins can pin/unpin ideas"}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        idea = self.get_object()
+        idea.is_pinned = not idea.is_pinned
+        idea.save()
+        
+        serializer = IdeaDetailSerializer(idea)
+        return Response(serializer.data)
 
 class IdeaRefineAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]

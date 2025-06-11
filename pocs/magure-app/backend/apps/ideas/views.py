@@ -63,10 +63,10 @@ class IdeaViewSet(viewsets.ModelViewSet):
         
         page = self.paginate_queryset(queryset)
         if page is not None:
-            serializer = IdeaListSerializer(page, many=True)
+            serializer = IdeaDetailSerializer(page, many=True, context={'request': request})
             return self.get_paginated_response(serializer.data)
         
-        serializer = IdeaListSerializer(queryset, many=True)
+        serializer = IdeaDetailSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])

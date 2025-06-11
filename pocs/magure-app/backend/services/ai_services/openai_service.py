@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class OpenAIService:
     def __init__(self):
-        self.api_base_url = services.ai_service_url
+        self.api_base_url = 'http://localhost:8001/v1/chat/completions'
         self.default_model = "gpt-3.5-turbo"
     def refine_idea(self, idea_text, conversation_history=None):
         prompt = self._build_refinement_prompt(idea_text, conversation_history)
@@ -24,14 +24,16 @@ class OpenAIService:
         }
 
         try:
+            print('Test Request: ', payload)
             response = httpx.post(self.api_base_url, json=payload)
             response.raise_for_status()
             data = response.json()
-
+            print(data)
             if data.get("choices"):
                 return data["choices"][0]["message"]["content"]
             return "No valid response received."
         except Exception as e:
+            print(e)
             logger.error(f"Local API refinement error: {e}")
             return "Sorry, there was an error refining your idea. Please try again later."
 

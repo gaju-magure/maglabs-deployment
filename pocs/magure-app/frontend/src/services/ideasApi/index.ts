@@ -9,6 +9,8 @@ export interface Idea {
   updated_at: string;
   user_email: string;
   is_pinned: boolean;
+  like_count: number;
+  is_liked: boolean;
 }
 
 export interface CreateIdeaRequest {
@@ -113,6 +115,28 @@ export async function toggleIdeaPin(id: string): Promise<Idea> {
   });
   if (!response.ok) {
     throw new Error('Failed to toggle idea pin');
+  }
+  return response.json();
+}
+
+export async function likeIdea(id: string): Promise<{message: string; idea: Idea}> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/${id}/like/`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to like idea');
+  }
+  return response.json();
+}
+
+export async function unlikeIdea(id: string): Promise<{message: string; idea: Idea}> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/${id}/unlike/`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to unlike idea');
   }
   return response.json();
 }

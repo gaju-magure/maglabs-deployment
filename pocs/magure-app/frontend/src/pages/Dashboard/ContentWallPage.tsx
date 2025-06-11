@@ -1,23 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Pin, Loader2, Sparkles, Clock, User } from 'lucide-react';
-import { getContentWallIdeas, toggleIdeaPin, type Idea } from '@/services/ideasApi';
+import { Pin, Loader2, Sparkles, Clock, User, Heart, Search, X } from 'lucide-react';
+import { getContentWallIdeas, toggleIdeaPin, likeIdea, unlikeIdea, type Idea } from '@/services/ideasApi';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { IdeaDetailModal } from '@/components/common/IdeaDetailModal';
 
 export const ContentWallPage: React.FC = () => {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [togglingPin, setTogglingPin] = useState<string | null>(null);
+  const [likingIdea, setLikingIdea] = useState<string | null>(null);
+  const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
   const { user } = useAuth();
 
   // Check if user is admin (can pin/unpin ideas)
   const isAdmin = user?.role === 'superadmin' || user?.role === 'tenant_admin';
+
+  // Filter ideas based on search query
+  const filteredIdeas = ideas.filter(idea => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      idea.title.toLowerCase().includes(query) ||
+      idea.description.toLowerCase().includes(query) ||
+      idea.user_email.toLowerCase().includes(query)
+    );
+  });
 
   // Load content wall ideas on mount
   useEffect(() => {
@@ -66,6 +84,68 @@ export const ContentWallPage: React.FC = () => {
       });
     } finally {
       setTogglingPin(null);
+    }
+  };
+
+  const handleLikeIdea = async (id: string, currentlyLiked: boolean) => {
+    try {
+      setLikingIdea(id);
+      
+      const response = currentlyLiked 
+        ? await unlikeIdea(id)
+        : await likeIdea(id);
+      
+      // Update the idea in the local state
+      setIdeas(prevIdeas => 
+        prevIdeas.map(idea => 
+          idea.id === id ? response.idea : idea
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: response.message,
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: `Failed to ${currentlyLiked ? 'unlike' : 'like'} idea`,
+        variant: "destructive",
+      });
+    } finally {
+      setLikingIdea(null);
+    }
+  };
+
+  const handleIdeaClick = (idea: Idea) => {
+    setSelectedIdea(idea);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedIdea(null);
+  };
+
+  const handleModalLike = async (id: string, currentlyLiked: boolean) => {
+    await handleLikeIdea(id, currentlyLiked);
+    // Update the selected idea if it's the one being liked
+    if (selectedIdea && selectedIdea.id === id) {
+      const updatedIdea = ideas.find(idea => idea.id === id);
+      if (updatedIdea) {
+        setSelectedIdea(updatedIdea);
+      }
+    }
+  };
+
+  const handleModalPin = async (id: string) => {
+    await handleTogglePin(id);
+    // Update the selected idea if it's the one being pinned
+    if (selectedIdea && selectedIdea.id === id) {
+      const updatedIdea = ideas.find(idea => idea.id === id);
+      if (updatedIdea) {
+        setSelectedIdea(updatedIdea);
+      }
     }
   };
 
@@ -132,27 +212,95 @@ export const ContentWallPage: React.FC = () => {
     <div className="w-full min-h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-4xl mx-auto px-6 py-6">
-          <div className="flex items-center gap-3 animate-in fade-in duration-500">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#FDA052] via-[#B96AF7] via-[#3077F3] to-[#41E6F8] p-[2px]">
-              <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-transparent bg-gradient-to-br from-[#FDA052] via-[#B96AF7] to-[#3077F3] bg-clip-text" />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          {/* Mobile Layout */}
+          <div className="flex flex-col gap-4 sm:hidden animate-in fade-in duration-500">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[#FDA052] via-[#B96AF7] via-[#3077F3] to-[#41E6F8] p-[2px]">
+                <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-transparent bg-gradient-to-br from-[#FDA052] via-[#B96AF7] to-[#3077F3] bg-clip-text" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  Ideas Wall
+                </h1>
+                <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  Discover and explore refined ideas from your team
+                </p>
               </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                Ideas Wall
-              </h1>
-              <p className="text-gray-500 dark:text-gray-400 text-sm" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                Discover and explore refined ideas from your team
-              </p>
+            
+            {/* Mobile Search Bar */}
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                type="text"
+                placeholder="Search ideas, authors..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                style={{ fontFamily: 'Satoshi, sans-serif' }}
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Desktop Layout */}
+          <div className="hidden sm:flex items-center justify-between gap-6 animate-in fade-in duration-500">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#FDA052] via-[#B96AF7] via-[#3077F3] to-[#41E6F8] p-[2px]">
+                <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-transparent bg-gradient-to-br from-[#FDA052] via-[#B96AF7] to-[#3077F3] bg-clip-text" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  Ideas Wall
+                </h1>
+                <p className="text-gray-500 dark:text-gray-400 text-sm" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  Discover and explore refined ideas from your team
+                </p>
+              </div>
+            </div>
+            
+            {/* Desktop Search Bar */}
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                type="text"
+                placeholder="Search ideas, authors..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                style={{ fontFamily: 'Satoshi, sans-serif' }}
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {ideas.length === 0 ? (
           <div className="text-center py-16 animate-in slide-in-from-bottom duration-500">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full mb-6 bg-gradient-to-br from-[#FDA052] via-[#B96AF7] via-[#3077F3] to-[#41E6F8] p-[2px]">
@@ -167,12 +315,41 @@ export const ContentWallPage: React.FC = () => {
               Ideas submitted through the idea chat will appear here. Start sharing your innovative thoughts!
             </p>
           </div>
+        ) : filteredIdeas.length === 0 ? (
+          <div className="text-center py-16 animate-in slide-in-from-bottom duration-500">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full mb-6 bg-gradient-to-br from-[#FDA052] via-[#B96AF7] via-[#3077F3] to-[#41E6F8] p-[2px]">
+              <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+                <Search className="w-12 h-12 text-transparent bg-gradient-to-br from-[#FDA052] via-[#B96AF7] to-[#3077F3] bg-clip-text" />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+              No ideas found
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+              No ideas match your search "{searchQuery}". Try different keywords or browse all ideas.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setSearchQuery('')}
+              className="mt-4"
+              style={{ fontFamily: 'Satoshi, sans-serif' }}
+            >
+              Clear Search
+            </Button>
+          </div>
         ) : (
           <div className="space-y-6">
-            {ideas.map((idea, index) => (
+            {/* Search Results Count */}
+            {searchQuery && (
+              <div className="text-sm text-gray-600 dark:text-gray-400 mb-4" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                Found {filteredIdeas.length} idea{filteredIdeas.length !== 1 ? 's' : ''} matching "{searchQuery}"
+              </div>
+            )}
+            
+            {filteredIdeas.map((idea, index) => (
               <Card 
                 key={idea.id} 
-                className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl animate-in slide-in-from-bottom ${
+                className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl animate-in slide-in-from-bottom cursor-pointer ${
                   idea.is_pinned 
                     ? 'ring-2 ring-yellow-200 dark:ring-yellow-800 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20' 
                     : 'hover:scale-[1.02] transform'
@@ -181,6 +358,7 @@ export const ContentWallPage: React.FC = () => {
                   animationDelay: `${index * 100}ms`,
                   fontFamily: 'Satoshi, sans-serif'
                 }}
+                onClick={() => handleIdeaClick(idea)}
               >
                 {idea.is_pinned && (
                   <div className="absolute top-0 right-0 w-0 h-0 border-l-[40px] border-l-transparent border-t-[40px] border-t-yellow-400">
@@ -223,7 +401,10 @@ export const ContentWallPage: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleTogglePin(idea.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTogglePin(idea.id);
+                        }}
                         disabled={togglingPin === idea.id}
                         className={`ml-4 transition-all duration-200 ${
                           idea.is_pinned 
@@ -242,15 +423,52 @@ export const ContentWallPage: React.FC = () => {
                 </CardHeader>
 
                 <CardContent className="pt-0">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap mb-4">
                     {idea.description}
                   </p>
+                  
+                  {/* Engagement Actions */}
+                  <div className="flex items-center gap-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLikeIdea(idea.id, idea.is_liked);
+                      }}
+                      disabled={likingIdea === idea.id}
+                      className={`flex items-center gap-2 transition-all duration-200 ${
+                        idea.is_liked 
+                          ? 'text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30' 
+                          : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'
+                      }`}
+                    >
+                      {likingIdea === idea.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Heart className={`w-4 h-4 ${idea.is_liked ? 'fill-current' : ''}`} />
+                      )}
+                      <span className="text-sm font-medium">{idea.like_count}</span>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
       </div>
+
+      {/* Idea Detail Modal */}
+      <IdeaDetailModal
+        idea={selectedIdea}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onLike={handleModalLike}
+        onPin={isAdmin ? handleModalPin : undefined}
+        isLiking={likingIdea === selectedIdea?.id}
+        isPinning={togglingPin === selectedIdea?.id}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 };

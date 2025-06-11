@@ -113,14 +113,14 @@ export const TenantModal: React.FC<TenantModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg rounded-2xl">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] w-[95vw] sm:w-full rounded-2xl overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#FDA052] to-[#B96AF7] flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-white" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-r from-[#FDA052] to-[#B96AF7] flex items-center justify-center">
+              <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-xl" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+              <DialogTitle className="text-lg sm:text-xl" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                 {isEditMode ? 'Edit Tenant' : 'Create New Tenant'}
               </DialogTitle>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1" style={{ fontFamily: 'Satoshi, sans-serif' }}>
@@ -130,7 +130,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
           </div>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-5 mt-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 mt-4 sm:mt-6">
           <div className="space-y-2">
             <Label htmlFor="name" style={{ fontFamily: 'Satoshi, sans-serif' }}>
               Tenant Name
@@ -218,13 +218,13 @@ export const TenantModal: React.FC<TenantModalProps> = ({
           </div>
           
           
-          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
             <Button 
               type="button" 
               variant="outline" 
               onClick={handleClose} 
               disabled={isSubmitting}
-              className="rounded-xl border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="rounded-xl border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 w-full sm:w-auto"
               style={{ fontFamily: 'Satoshi, sans-serif' }}
             >
               Cancel
@@ -232,7 +232,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
             <Button 
               type="submit" 
               disabled={isSubmitting}
-              className="rounded-xl bg-gradient-to-r from-[#FDA052] to-[#B96AF7] text-white hover:shadow-lg transition-all duration-200 disabled:opacity-50"
+              className="rounded-xl bg-gradient-to-r from-[#FDA052] to-[#B96AF7] text-white hover:shadow-lg transition-all duration-200 disabled:opacity-50 w-full sm:w-auto"
               style={{ fontFamily: 'Satoshi, sans-serif' }}
             >
               {isSubmitting ? (

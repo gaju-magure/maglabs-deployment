@@ -1,0 +1,1 @@
+- always provide incremental updates in granular commit

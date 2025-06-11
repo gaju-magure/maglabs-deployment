@@ -81,7 +81,7 @@ export function DataTable<T>({
 
   if (loading) {
     return (
-      <div className={`h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 p-6 ${className}`}>
+      <div className={`h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 p-4 sm:p-6 ${className}`}>
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex-1 flex flex-col overflow-hidden">
           <SearchAndActions
             title={title}
@@ -97,7 +97,7 @@ export function DataTable<T>({
             showRefreshButton={false} // Disable during loading
             showFilterButton={showFilterButton}
           />
-          <CardContent className="flex-1 overflow-hidden p-6">
+          <CardContent className="flex-1 overflow-hidden p-4 sm:p-6">
             <LoadingSkeleton rows={5} columns={columns.length + (actions.length > 0 ? 1 : 0)} />
           </CardContent>
         </div>
@@ -106,7 +106,7 @@ export function DataTable<T>({
   }
 
   return (
-    <div className={`h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 p-6 ${className}`}>
+    <div className={`h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 p-4 sm:p-6 ${className}`}>
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex-1 flex flex-col overflow-hidden">
         <SearchAndActions
           title={title}
@@ -123,7 +123,7 @@ export function DataTable<T>({
           showFilterButton={showFilterButton}
         />
         
-        <CardContent className="flex-1 overflow-hidden p-6">
+        <CardContent className="flex-1 overflow-hidden p-4 sm:p-6">
           {data.length === 0 ? (
             <EmptyState
               title={emptyStateTitle}

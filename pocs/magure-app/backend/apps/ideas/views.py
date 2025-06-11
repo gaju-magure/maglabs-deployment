@@ -138,6 +138,6 @@ class IdeaSubmitAPIView(APIView):
         )
         
         # Serialize and return the created idea
-        serializer = IdeaDetailSerializer(idea)
+        serializer = IdeaDetailSerializer(idea, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

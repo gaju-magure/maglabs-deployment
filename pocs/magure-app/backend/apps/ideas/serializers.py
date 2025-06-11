@@ -13,8 +13,10 @@ class IdeaListSerializer(serializers.ModelSerializer):
         ]
     
     def get_is_liked(self, obj):
-        user = self.context['request'].user
-        return obj.is_liked_by(user)
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            return obj.is_liked_by(request.user)
+        return False
 
 class IdeaDetailSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
@@ -28,8 +30,10 @@ class IdeaDetailSerializer(serializers.ModelSerializer):
         ]
     
     def get_is_liked(self, obj):
-        user = self.context['request'].user
-        return obj.is_liked_by(user)
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            return obj.is_liked_by(request.user)
+        return False
 
 class IdeaCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,7 +41,11 @@ class IdeaCreateSerializer(serializers.ModelSerializer):
         fields = ['title', 'description', 'status']
 
     def create(self, validated_data):
-        user = self.context['request'].user
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            user = request.user
+        else:
+            raise serializers.ValidationError("User context is required for idea creation")
         return Idea.objects.create(user=user, **validated_data)
 
 class IdeaUpdateSerializer(serializers.ModelSerializer):

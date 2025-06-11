@@ -65,7 +65,7 @@ export const UserModal: React.FC<UserModalProps> = ({
     password: '',
     first_name: initialData?.first_name || '',
     last_name: initialData?.last_name || '',
-    role: initialData?.role || '',
+    role: initialData?.role || (currentUser?.role === UserRole.SuperAdmin ? 'tenant_user' : ''),
     job_title: initialData?.job_title || '',
     phone_number: initialData?.phone_number || '',
     department_id: initialData?.department_id || undefined,
@@ -95,7 +95,8 @@ export const UserModal: React.FC<UserModalProps> = ({
         password: '',
         first_name: '',
         last_name: '',
-        role: '',
+        // For super admin, default to tenant_user role
+        role: currentUser?.role === UserRole.SuperAdmin ? 'tenant_user' : '',
         job_title: '',
         phone_number: '',
         department_id: undefined,
@@ -121,7 +122,8 @@ export const UserModal: React.FC<UserModalProps> = ({
           email: formData.email,
           first_name: formData.first_name,
           last_name: formData.last_name,
-          role: formData.role,
+          // For super admin, default to tenant_user role if no role is selected
+          role: formData.role || (currentUser?.role === UserRole.SuperAdmin ? 'tenant_user' : ''),
         };
         
         // Only include password for create mode or when password is provided in edit mode
@@ -235,19 +237,21 @@ export const UserModal: React.FC<UserModalProps> = ({
             />
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="role" style={{ fontFamily: 'Satoshi, sans-serif' }}>User Role</Label>
-            <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })} required>
-              <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="superadmin" style={{ fontFamily: 'Satoshi, sans-serif' }}>Super Admin</SelectItem>
-                <SelectItem value="tenant_admin" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tenant Admin</SelectItem>
-                <SelectItem value="tenant_user" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tenant User</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Role selection - only shown for tenant admins */}
+          {currentUser?.role === UserRole.TenantAdmin && (
+            <div className="space-y-2">
+              <Label htmlFor="role" style={{ fontFamily: 'Satoshi, sans-serif' }}>User Role</Label>
+              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })} required>
+                <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="tenant_admin" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tenant Admin</SelectItem>
+                  <SelectItem value="tenant_user" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tenant User</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           
           {showProfileFields && (
             <>

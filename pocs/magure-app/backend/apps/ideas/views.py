@@ -44,3 +44,28 @@ class IdeaRefineAPIView(APIView):
         refined = service.refine_idea(idea_text, conversation_history)
         return Response({"refined_idea": refined})
 
+class IdeaSubmitAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        title = request.data.get("title")
+        description = request.data.get("description")
+        
+        if not title or not description:
+            return Response(
+                {"error": "Both title and description are required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create the idea with refined status
+        idea = Idea.objects.create(
+            user=request.user,
+            title=title,
+            description=description,
+            status='refined'
+        )
+        
+        # Serialize and return the created idea
+        serializer = IdeaDetailSerializer(idea)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+

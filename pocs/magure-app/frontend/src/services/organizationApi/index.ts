@@ -5,7 +5,7 @@ export interface CustomRole {
   id: number;
   name: string;
   description: string;
-  permissions: Record<string, any>;
+  permissions: Record<string, unknown>;
   parent_role?: number;
   is_active: boolean;
   is_system_role: boolean;
@@ -17,7 +17,7 @@ export interface CustomRole {
 export interface CreateCustomRoleRequest {
   name: string;
   description?: string;
-  permissions?: Record<string, any>;
+  permissions?: Record<string, unknown>;
   parent_role?: number;
   is_active?: boolean;
 }
@@ -25,7 +25,7 @@ export interface CreateCustomRoleRequest {
 export interface UpdateCustomRoleRequest {
   name?: string;
   description?: string;
-  permissions?: Record<string, any>;
+  permissions?: Record<string, unknown>;
   parent_role?: number;
   is_active?: boolean;
 }

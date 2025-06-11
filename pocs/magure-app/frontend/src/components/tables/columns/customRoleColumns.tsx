@@ -4,7 +4,7 @@ import { CheckCircle, XCircle, Users, Shield } from 'lucide-react';
 import { DataTableColumn } from '@/components/ui/data-table';
 import { CustomRole } from '@/services/organizationApi';
 
-const getPermissionCount = (permissions: Record<string, any>) => {
+const getPermissionCount = (permissions: Record<string, unknown>) => {
   if (!permissions || typeof permissions !== 'object') return 0;
   return Object.values(permissions).filter(Boolean).length;
 };

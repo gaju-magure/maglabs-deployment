@@ -37,7 +37,7 @@ export const userColumns: DataTableColumn<UserData>[] = [
             {user.first_name} {user.last_name}
           </p>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-            @{user.username}
+            {user.username}
           </p>
         </div>
       </div>

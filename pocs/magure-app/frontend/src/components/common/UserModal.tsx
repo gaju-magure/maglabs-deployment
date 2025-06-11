@@ -108,7 +108,7 @@ export const UserModal: React.FC<UserModalProps> = ({
       });
       setAvatarUrl(null);
     }
-  }, [mode, initialData]);
+  }, [mode, initialData, currentUser?.role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

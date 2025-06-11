@@ -3,7 +3,6 @@ import { getBaseUrl } from "@/lib/utils";
 export interface OnboardingTenant {
   id: number;
   name: string;
-  schema_name: string;
   created_at: string;
   updated_at: string;
   primary_domain: string;
@@ -44,6 +43,7 @@ export interface CompanyDetailsData {
   company_name: string;
   company_size: '1-10' | '11-50' | '51-200' | '201-1000' | '1000+';
   industry: string;
+  company_website?: string;
   description?: string;
 }
 
@@ -51,6 +51,7 @@ export interface PreferencesData {
   token: string;
   timezone: string;
   date_format: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD';
+  theme: 'light' | 'dark' | 'system';
   notifications_enabled: boolean;
 }
 

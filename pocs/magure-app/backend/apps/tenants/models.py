@@ -11,7 +11,11 @@ class Tenant(TenantMixin):
     Represents a single customer/tenant. By subclassing TenantMixin,
     calling tenant.save() will automatically create a new PostgreSQL schema
     and run all of your TENANT_APPS migrations there.
+    
+    Setting auto_drop_schema=True enables automatic schema deletion when
+    the tenant is deleted, allowing recreation with same details.
     """
+    auto_drop_schema = True
     class OnboardingStatus(models.TextChoices):
         PENDING = 'pending', 'Pending'
         IN_PROGRESS = 'in_progress', 'In Progress'

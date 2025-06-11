@@ -13,7 +13,6 @@ import { Building2, Plus } from 'lucide-react';
 
 export interface TenantFormData {
   name: string;
-  schemaName: string;
   primaryDomain: string;
   adminEmail?: string;
   adminPassword?: string;
@@ -23,8 +22,8 @@ export interface TenantFormData {
 export interface TenantData {
   id?: number;
   name: string;
-  schema_name: string;
   primary_domain: string;
+  admin_email?: string;
   created_at?: string;
   updated_at?: string;
   status: 'active' | 'inactive';
@@ -47,7 +46,6 @@ export const TenantModal: React.FC<TenantModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<TenantFormData>({
     name: '',
-    schemaName: '',
     primaryDomain: '',
     adminEmail: '',
     adminPassword: '',
@@ -63,16 +61,14 @@ export const TenantModal: React.FC<TenantModalProps> = ({
       if (isEditMode) {
         setFormData({
           name: tenant.name,
-          schemaName: tenant.schema_name,
           primaryDomain: tenant.primary_domain,
-          adminEmail: '', // Don't populate for edit
+          adminEmail: tenant.admin_email || '',
           adminPassword: '', // Don't populate for edit
           status: tenant.status,
         });
       } else {
         setFormData({
           name: '',
-          schemaName: '',
           primaryDomain: '',
           adminEmail: '',
           adminPassword: '',
@@ -86,7 +82,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     e.preventDefault();
     
     // Validation
-    if (!formData.name.trim() || !formData.schemaName.trim() || !formData.primaryDomain.trim()) {
+    if (!formData.name.trim() || !formData.primaryDomain.trim()) {
       return;
     }
     
@@ -106,16 +102,10 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     }
   };
 
-  const generateSchemaName = (name: string) => {
-    return name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-  };
-
   const handleNameChange = (name: string) => {
     setFormData({
       ...formData,
       name,
-      // Only auto-generate schema name in create mode
-      schemaName: isEditMode ? formData.schemaName : generateSchemaName(name),
     });
   };
 
@@ -161,26 +151,6 @@ export const TenantModal: React.FC<TenantModalProps> = ({
             />
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="schemaName" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-              Schema Name
-            </Label>
-            <Input
-              id="schemaName"
-              value={formData.schemaName}
-              onChange={(e) => setFormData({ ...formData, schemaName: e.target.value })}
-              placeholder="e.g., acme_corp"
-              required
-              disabled={isSubmitting || !!isEditMode}
-              className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
-              style={{ fontFamily: 'Satoshi, sans-serif' }}
-            />
-            {isEditMode && (
-              <p className="text-xs text-gray-500" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                Schema name cannot be changed after creation
-              </p>
-            )}
-          </div>
           
           <div className="space-y-2">
             <Label htmlFor="primaryDomain" style={{ fontFamily: 'Satoshi, sans-serif' }}>
@@ -198,41 +168,44 @@ export const TenantModal: React.FC<TenantModalProps> = ({
             />
           </div>
           
+          <div className="space-y-2">
+            <Label htmlFor="adminEmail" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+              Admin Email
+            </Label>
+            <Input
+              id="adminEmail"
+              type="email"
+              value={formData.adminEmail}
+              onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+              placeholder="admin@acme.com"
+              required
+              disabled={isSubmitting || isEditMode}
+              className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
+              style={{ fontFamily: 'Satoshi, sans-serif' }}
+            />
+            {isEditMode && (
+              <p className="text-xs text-gray-500" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                Admin email is set during onboarding
+              </p>
+            )}
+          </div>
+          
           {!isEditMode && (
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="adminEmail" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                  Admin Email
-                </Label>
-                <Input
-                  id="adminEmail"
-                  type="email"
-                  value={formData.adminEmail}
-                  onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
-                  placeholder="admin@acme.com"
-                  required
-                  disabled={isSubmitting}
-                  className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
-                  style={{ fontFamily: 'Satoshi, sans-serif' }}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="adminPassword" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                  Admin Password
-                </Label>
-                <Input
-                  id="adminPassword"
-                  type="password"
-                  value={formData.adminPassword}
-                  onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })}
-                  placeholder="••••••••"
-                  required
-                  disabled={isSubmitting}
-                  className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
-                  style={{ fontFamily: 'Satoshi, sans-serif' }}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="adminPassword" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                Admin Password
+              </Label>
+              <Input
+                id="adminPassword"
+                type="password"
+                value={formData.adminPassword}
+                onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })}
+                placeholder="••••••••"
+                required
+                disabled={isSubmitting}
+                className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
+                style={{ fontFamily: 'Satoshi, sans-serif' }}
+              />
             </div>
           )}
           

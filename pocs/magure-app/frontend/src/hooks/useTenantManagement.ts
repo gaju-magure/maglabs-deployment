@@ -111,7 +111,6 @@ export const useTenantManagement = () => {
       try {
         await createTenant({
           name: formData.name,
-          schema_name: formData.schemaName,
           domain_prefix: formData.primaryDomain,
           admin_email: formData.adminEmail!,
           admin_password: formData.adminPassword!,
@@ -178,13 +177,13 @@ export const useTenantManagement = () => {
   const confirmDeleteTenant = async () => {
     if (deletingTenant) {
       try {
-        await deleteTenant(deletingTenant.id);
+        const result = await deleteTenant(deletingTenant.id);
         
         setTenants(tenants.filter(t => t.id !== deletingTenant.id));
         
         toast({
           title: "Success", 
-          description: `Tenant "${deletingTenant.name}" deleted successfully`,
+          description: result.message,
         });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to delete tenant';
@@ -213,8 +212,8 @@ export const useTenantManagement = () => {
   // Filtered data
   const filteredTenants = tenants.filter(tenant =>
     tenant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    tenant.schema_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    tenant.primary_domain.toLowerCase().includes(searchQuery.toLowerCase())
+    tenant.primary_domain.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (tenant.admin_email && tenant.admin_email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Action handlers for table

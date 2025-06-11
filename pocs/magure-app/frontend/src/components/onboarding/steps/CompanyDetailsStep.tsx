@@ -18,6 +18,7 @@ interface FormData {
   company_name: string;
   company_size: '1-10' | '11-50' | '51-200' | '201-1000' | '1000+';
   industry: string;
+  company_website?: string;
   description?: string;
 }
 
@@ -144,6 +145,25 @@ export function CompanyDetailsStep({ onSubmit, onComplete, isLoading }: CompanyD
               <p className="text-sm text-red-600">{errors.industry.message}</p>
             )}
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="company_website">Company Website (Optional)</Label>
+          <Input
+            id="company_website"
+            type="url"
+            placeholder="https://www.yourcompany.com"
+            {...register('company_website', {
+              pattern: {
+                value: /^https?:\/\/.+\..+/,
+                message: 'Please enter a valid website URL',
+              },
+            })}
+            className={errors.company_website ? 'border-red-500' : ''}
+          />
+          {errors.company_website && (
+            <p className="text-sm text-red-600">{errors.company_website.message}</p>
+          )}
         </div>
 
         <div className="space-y-2">

@@ -7,7 +7,6 @@ import { DataTableColumn } from '@/components/ui/data-table';
 export interface TenantData {
   id: number;
   name: string;
-  schema_name: string;
   primary_domain: string;
   status: 'active' | 'inactive';
   onboarding_status?: 'pending' | 'in_progress' | 'completed';
@@ -35,8 +34,8 @@ export const tenantColumns: DataTableColumn<TenantData>[] = [
           <p className="font-medium text-gray-900 dark:text-white" style={{ fontFamily: 'Satoshi, sans-serif' }}>
             {tenant.name}
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-mono" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-            {tenant.schema_name}
+          <p className="text-sm text-gray-500 dark:text-gray-400" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+            {tenant.admin_email || 'No admin email'}
           </p>
         </div>
       </div>

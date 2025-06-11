@@ -2,7 +2,6 @@ import { getBaseUrl } from "@/lib/utils";
 
 export interface CreateTenantRequest {
   name: string;
-  schema_name: string;
   domain_prefix: string;
   admin_email: string;
   admin_password: string;
@@ -11,7 +10,6 @@ export interface CreateTenantRequest {
 export interface Tenant {
   id: number;
   name: string;
-  schema_name: string;
   created_at: string;
   updated_at: string;
   primary_domain: string;
@@ -75,7 +73,7 @@ export async function updateTenant(id: number, tenantData: UpdateTenantRequest):
   }
 }
 
-export async function deleteTenant(id: number): Promise<void> {
+export async function deleteTenant(id: number): Promise<{ message: string }> {
   const response = await fetch(`${getBaseUrl()}/api/v1/tenants/${id}/`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
@@ -84,6 +82,8 @@ export async function deleteTenant(id: number): Promise<void> {
   if (!response.ok) {
     throw new Error('Failed to delete tenant');
   }
+
+  return response.json();
 }
 
 export async function sendOnboardingInvitation(id: number): Promise<{ 
@@ -104,3 +104,4 @@ export async function sendOnboardingInvitation(id: number): Promise<{
 
   return response.json();
 }
+

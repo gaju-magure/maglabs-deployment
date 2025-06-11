@@ -74,7 +74,7 @@ export const createTenantActions = ({ onEdit, onDelete, onSendInvitation }: Tena
     onClick: onDelete,
     variant: 'ghost',
     className: 'text-red-600 hover:text-red-700',
-    title: 'Delete tenant'
+    title: 'Delete tenant (schema and all data will be permanently removed)'
   };
 
   return [...baseActions, ...onboardingActions, deleteAction];

@@ -108,10 +108,19 @@ export const TenantsPage: React.FC = () => {
           <span>
             Are you sure you want to delete{' '}
             <strong>"{deletingTenant?.name}"</strong>?
-            This action cannot be undone and will remove all associated data.
+            <br /><br />
+            This will permanently delete:
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>The complete PostgreSQL schema and all tenant data</li>
+              <li>All user accounts and profiles in this tenant</li>
+              <li>Domain configurations</li>
+              <li>All application data and settings</li>
+            </ul>
+            <br />
+            <strong>Note:</strong> After deletion, you can create a new tenant with the same details.
           </span>
         }
-        confirmText="Delete"
+        confirmText="Delete Permanently"
         onConfirm={confirmDeleteTenant}
         variant="destructive"
         icon={<Trash2 className="h-5 w-5" />}

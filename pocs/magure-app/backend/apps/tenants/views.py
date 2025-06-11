@@ -81,8 +81,38 @@ class TenantViewSet(
         if request.user.role != "superadmin":
             return Response(status=status.HTTP_403_FORBIDDEN)
 
-        tenant.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        tenant_name = tenant.name
+        
+        try:
+            # Django-tenants with auto_drop_schema=True will automatically:
+            # 1. Drop the PostgreSQL schema and all its data
+            # 2. Delete the tenant model instance
+            # 3. Clean up related Domain and TenantOnboarding records via CASCADE
+            tenant.delete()
+            
+            return Response({
+                'message': f'Tenant "{tenant_name}" deleted successfully. You can now create a new tenant with the same details.'
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            # Handle case where schema doesn't exist or other deletion errors
+            error_str = str(e).lower()
+            
+            if 'does not exist' in error_str or 'schema' in error_str:
+                # Schema doesn't exist, but we can still delete the tenant record
+                # First, temporarily disable auto_drop_schema to avoid the error
+                tenant.auto_drop_schema = False
+                tenant.save()
+                tenant.delete()
+                
+                return Response({
+                    'message': f'Tenant "{tenant_name}" deleted successfully. Schema was already removed or never existed.'
+                }, status=status.HTTP_200_OK)
+            else:
+                # Other unexpected errors
+                return Response({
+                    'error': f'Failed to delete tenant: {str(e)}'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsSuperAdmin])
     def send_invitation(self, request, pk=None):
@@ -138,6 +168,7 @@ class TenantViewSet(
                 'token': str(token),  # Include token for manual sharing if email fails
                 'admin_email': tenant.admin_email
             }, status=status.HTTP_200_OK)
+
 
 
 class OnboardingVerifyTokenView(APIView):

@@ -86,7 +86,6 @@ class TenantInfoSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
-            "schema_name",
             "created_at",
             "updated_at",
             "primary_domain",
@@ -193,6 +192,7 @@ class CompanyDetailsSerializer(serializers.Serializer):
         ('1000+', '1000+ employees')
     ])
     industry = serializers.CharField(max_length=100)
+    company_website = serializers.URLField(required=False, allow_blank=True)
     description = serializers.CharField(max_length=500, required=False, allow_blank=True)
     
     def validate_token(self, value):
@@ -214,6 +214,11 @@ class PreferencesSerializer(serializers.Serializer):
         ('DD/MM/YYYY', 'DD/MM/YYYY'),
         ('YYYY-MM-DD', 'YYYY-MM-DD')
     ], default='MM/DD/YYYY')
+    theme = serializers.ChoiceField(choices=[
+        ('light', 'Light'),
+        ('dark', 'Dark'),
+        ('system', 'System')
+    ], default='system')
     notifications_enabled = serializers.BooleanField(default=True)
     
     def validate_token(self, value):

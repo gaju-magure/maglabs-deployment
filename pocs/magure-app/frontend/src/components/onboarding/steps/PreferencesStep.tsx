@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
-import { Settings, Clock, Calendar, Bell } from 'lucide-react';
+import { Settings, Clock, Calendar, Bell, Palette, Sun, Moon, Monitor } from 'lucide-react';
 import { PreferencesData } from '@/services/onboardingApi';
 
 interface PreferencesStepProps {
@@ -17,6 +17,7 @@ interface FormData {
   timezone: string;
   date_format: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD';
   notifications_enabled: boolean;
+  theme: 'light' | 'dark' | 'system';
 }
 
 const timezones = [
@@ -40,6 +41,12 @@ const dateFormats = [
   { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD (ISO Format)', example: '2023-12-31' },
 ];
 
+const themes = [
+  { value: 'light', label: 'Light', description: 'Clean and bright interface', icon: Sun },
+  { value: 'dark', label: 'Dark', description: 'Easy on the eyes for long work sessions', icon: Moon },
+  { value: 'system', label: 'System', description: 'Follow your device settings', icon: Monitor },
+];
+
 export function PreferencesStep({ onSubmit, onComplete, isLoading }: PreferencesStepProps) {
   const {
     handleSubmit,
@@ -51,12 +58,14 @@ export function PreferencesStep({ onSubmit, onComplete, isLoading }: Preferences
       timezone: 'UTC',
       date_format: 'MM/DD/YYYY',
       notifications_enabled: true,
+      theme: 'system',
     },
   });
 
   const watchTimezone = watch('timezone');
   const watchDateFormat = watch('date_format');
   const watchNotifications = watch('notifications_enabled');
+  const watchTheme = watch('theme');
 
   const handleFormSubmit = async (data: FormData) => {
     const success = await onSubmit(data);
@@ -139,6 +148,55 @@ export function PreferencesStep({ onSubmit, onComplete, isLoading }: Preferences
                 </div>
               </div>
 
+              <div className="flex items-start space-x-3">
+                <Palette className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-1" />
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="theme" className="text-base font-medium">
+                    Interface Theme
+                  </Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {themes.map((themeOption) => {
+                      const Icon = themeOption.icon;
+                      return (
+                        <div
+                          key={themeOption.value}
+                          className={`relative cursor-pointer rounded-lg border p-3 transition-all ${
+                            watchTheme === themeOption.value
+                              ? 'border-indigo-500 bg-indigo-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => setValue('theme', themeOption.value as any)}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <Icon className={`w-5 h-5 ${
+                              watchTheme === themeOption.value ? 'text-indigo-600' : 'text-gray-400'
+                            }`} />
+                            <div className="flex-1">
+                              <h4 className={`text-sm font-medium ${
+                                watchTheme === themeOption.value ? 'text-indigo-900' : 'text-gray-900'
+                              }`}>
+                                {themeOption.label}
+                              </h4>
+                              <p className={`text-xs ${
+                                watchTheme === themeOption.value ? 'text-indigo-700' : 'text-gray-500'
+                              }`}>
+                                {themeOption.description}
+                              </p>
+                            </div>
+                          </div>
+                          {watchTheme === themeOption.value && (
+                            <div className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Choose your preferred interface appearance.
+                  </p>
+                </div>
+              </div>
+              
               <div className="flex items-start space-x-3">
                 <Bell className="w-5 h-5 text-orange-600 flex-shrink-0 mt-1" />
                 <div className="flex-1 space-y-2">

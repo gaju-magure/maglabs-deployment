@@ -132,6 +132,59 @@ class TenantDepartment(models.Model):
         return f"{self.name} ({self.tenant.name})"
 
 
+class TenantRole(models.Model):
+    """Custom roles that can be created by each tenant"""
+    
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='custom_roles'
+    )
+    
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    
+    # Role permissions (can be extended with Django permissions framework)
+    permissions = models.JSONField(
+        default=dict,
+        help_text="JSON field for storing role-specific permissions"
+    )
+    
+    # Role hierarchy
+    parent_role = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='child_roles'
+    )
+    
+    # Status
+    is_active = models.BooleanField(default=True)
+    is_system_role = models.BooleanField(
+        default=False,
+        help_text="System roles cannot be deleted"
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_roles'
+    )
+    
+    class Meta:
+        db_table = 'tenant_roles'
+        unique_together = ['tenant', 'name']
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.name} ({self.tenant.name})"
+
+
 # Import branding models at the end to avoid circular imports
 from .branding_models import (
     DefaultThemeTemplate, 

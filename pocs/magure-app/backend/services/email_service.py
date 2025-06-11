@@ -3,6 +3,7 @@ from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
 import logging
+from config.domain_config import get_onboarding_url, get_dashboard_url, get_user_domain
 
 logger = logging.getLogger(__name__)
 
@@ -22,21 +23,16 @@ class EmailService:
             bool: True if email sent successfully, False otherwise
         """
         try:
-            # Get primary domain for the tenant
-            from apps.tenants.models import Domain
-            primary_domain = Domain.objects.filter(tenant=tenant, is_primary=True).first()
-            if not primary_domain:
-                logger.error(f"No primary domain found for tenant {tenant.name}")
-                return False
-            
-            # Construct onboarding URL
-            onboarding_url = f"https://{primary_domain.domain}/onboarding/{token}"
+            # Generate environment-appropriate onboarding URL
+            onboarding_url = get_onboarding_url(tenant.schema_name, token)
+            user_domain = get_user_domain(tenant.schema_name)
             
             # Email context
             context = {
                 'tenant_name': tenant.name,
                 'admin_email': tenant.admin_email,
                 'onboarding_url': onboarding_url,
+                'user_domain': user_domain,
                 'support_email': getattr(settings, 'DEFAULT_FROM_EMAIL', 'support@maglabs.com'),
                 'company_name': 'MagLabs',
                 'token_expiry_hours': 48
@@ -80,21 +76,16 @@ class EmailService:
             bool: True if email sent successfully, False otherwise
         """
         try:
-            # Get primary domain for the tenant
-            from apps.tenants.models import Domain
-            primary_domain = Domain.objects.filter(tenant=tenant, is_primary=True).first()
-            if not primary_domain:
-                logger.error(f"No primary domain found for tenant {tenant.name}")
-                return False
-            
-            # Dashboard URL
-            dashboard_url = f"https://{primary_domain.domain}/dashboard"
+            # Generate environment-appropriate dashboard URL
+            dashboard_url = get_dashboard_url(tenant.schema_name)
+            user_domain = get_user_domain(tenant.schema_name)
             
             # Email context
             context = {
                 'tenant_name': tenant.name,
                 'admin_email': tenant.admin_email,
                 'dashboard_url': dashboard_url,
+                'user_domain': user_domain,
                 'support_email': getattr(settings, 'DEFAULT_FROM_EMAIL', 'support@maglabs.com'),
                 'company_name': 'MagLabs'
             }

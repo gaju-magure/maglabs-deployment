@@ -21,6 +21,7 @@ export function TenantOnboarding() {
     submitProfileSetup,
     submitCompanyDetails,
     submitPreferences,
+    hasVerifiedToken
   } = useOnboarding(token);
 
   useEffect(() => {
@@ -29,23 +30,17 @@ export function TenantOnboarding() {
       return;
     }
 
-    if (!isTokenValid && !isLoading) {
+    if (!hasVerifiedToken && !isTokenValid && !isLoading) {
       verifyToken(token);
     }
   }, [token, isTokenValid, isLoading, verifyToken, navigate]);
 
   // Handle completion - redirect to tenant dashboard
   useEffect(() => {
-    if (status?.onboarding_status === 'completed' || currentStep >= 4) {
+    if (status?.completed_steps.length === 4 || currentStep >= 4) {
       // Wait a moment to show completion, then redirect
       const timer = setTimeout(() => {
-        // Redirect to tenant dashboard
-        const domain = tenant?.primary_domain;
-        if (domain) {
-          window.location.href = `https://${domain}/dashboard`;
-        } else {
           navigate('/dashboard');
-        }
       }, 3000);
 
       return () => clearTimeout(timer);

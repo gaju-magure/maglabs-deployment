@@ -7,3 +7,5 @@ django-cors-headers
 python-decouple
 djangorestframework-simplejwt
 openai
+pytz
+Pillow

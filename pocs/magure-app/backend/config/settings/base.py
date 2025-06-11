@@ -86,6 +86,14 @@ DATABASES = {
 # Use the TenantSyncRouter to route per-tenant model queries into the right schema
 DATABASE_ROUTERS = ["django_tenants.routers.TenantSyncRouter"]
 
+# ---------- Domain Configuration ----------
+# Import after apps are loaded to avoid circular imports
+try:
+    from config.domain_config import domain_config
+    DOMAIN_CONFIG = domain_config
+except ImportError:
+    DOMAIN_CONFIG = None
+
 # ---------- CORS (to allow React) ----------
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_METHODS = [
@@ -97,7 +105,11 @@ CORS_ALLOW_METHODS = [
     "PUT",
 ]
 
-# CORS_ALLOWED_ORIGINS = cors.allowed_origins
+# Environment-aware CORS origins
+try:
+    CORS_ALLOWED_ORIGINS = domain_config.get_cors_origins()
+except:
+    CORS_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 # ---------- Internationalization & Timezone ----------
 

@@ -19,14 +19,17 @@ export interface OnboardingTenant {
 export interface OnboardingStatus {
   tenant_name: string;
   onboarding_status: 'pending' | 'in_progress' | 'completed';
+  current_step: string;
   completion_percentage: number;
-  completed_steps: number;
+  completed_steps: string[];
   total_steps: number;
-  steps: {
-    email_sent: boolean;
-    profile_setup: boolean;
-    company_details: boolean;
-    preferences: boolean;
+  can_edit_steps: Record<string, boolean>;
+  step_data: Record<string, any>;
+  environment_info: {
+    frontend_url: string;
+    dashboard_url: string;
+    api_domain: string;
+    is_development: boolean;
   };
 }
 

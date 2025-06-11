@@ -15,7 +15,6 @@ export interface TenantFormData {
   name: string;
   primaryDomain: string;
   adminEmail?: string;
-  adminPassword?: string;
   status: 'active' | 'inactive';
 }
 
@@ -48,7 +47,6 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     name: '',
     primaryDomain: '',
     adminEmail: '',
-    adminPassword: '',
     status: 'active',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,7 +61,6 @@ export const TenantModal: React.FC<TenantModalProps> = ({
           name: tenant.name,
           primaryDomain: tenant.primary_domain,
           adminEmail: tenant.admin_email || '',
-          adminPassword: '', // Don't populate for edit
           status: tenant.status,
         });
       } else {
@@ -71,7 +68,6 @@ export const TenantModal: React.FC<TenantModalProps> = ({
           name: '',
           primaryDomain: '',
           adminEmail: '',
-          adminPassword: '',
           status: 'active',
         });
       }
@@ -86,7 +82,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
       return;
     }
     
-    if (!isEditMode && (!formData.adminEmail?.trim() || !formData.adminPassword?.trim())) {
+    if (!isEditMode && !formData.adminEmail?.trim()) {
       return;
     }
 
@@ -191,22 +187,9 @@ export const TenantModal: React.FC<TenantModalProps> = ({
           </div>
           
           {!isEditMode && (
-            <div className="space-y-2">
-              <Label htmlFor="adminPassword" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                Admin Password
-              </Label>
-              <Input
-                id="adminPassword"
-                type="password"
-                value={formData.adminPassword}
-                onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })}
-                placeholder="••••••••"
-                required
-                disabled={isSubmitting}
-                className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
-                style={{ fontFamily: 'Satoshi, sans-serif' }}
-              />
-            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+              Admin password will be set during onboarding
+            </p>
           )}
           
           <div className="space-y-2">
@@ -233,6 +216,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
               </SelectContent>
             </Select>
           </div>
+          
           
           <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
             <Button 

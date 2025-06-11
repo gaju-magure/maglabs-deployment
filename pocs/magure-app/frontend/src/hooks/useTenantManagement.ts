@@ -41,7 +41,7 @@ export const useTenantManagement = () => {
       const tenantsData = await getTenants();
       const extendedTenants = tenantsData.map(tenant => ({
         ...tenant,
-        status: 'active' as const,
+        status: tenant.status || 'active',
         // Ensure onboarding fields are preserved
         onboarding_status: tenant.onboarding_status || 'pending',
         onboarding_progress: tenant.onboarding_progress,
@@ -113,7 +113,7 @@ export const useTenantManagement = () => {
           name: formData.name,
           domain_prefix: formData.primaryDomain,
           admin_email: formData.adminEmail!,
-          admin_password: formData.adminPassword!,
+          status: formData.status,
         });
         
         toast({

@@ -4,12 +4,13 @@ export interface CreateTenantRequest {
   name: string;
   domain_prefix: string;
   admin_email: string;
-  admin_password: string;
+  status: 'active' | 'inactive';
 }
 
 export interface Tenant {
   id: number;
   name: string;
+  status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
   primary_domain: string;

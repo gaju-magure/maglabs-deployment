@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CheckCircle, XCircle, Building2, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { DataTableColumn } from '@/components/ui/data-table';
 
@@ -71,21 +72,51 @@ export const tenantColumns: DataTableColumn<TenantData>[] = [
       }
 
       if (status === 'in_progress' && progress) {
+        const stepNames = ['Email Invitation', 'Profile Setup', 'Company Details', 'Preferences'];
+        const currentStepIndex = Math.max(0, progress.completed_steps);
+        const currentStepName = stepNames[currentStepIndex] || 'Complete';
+        
         return (
-          <div className="space-y-1 w-full">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3 text-blue-600" />
-                <span className="text-xs text-blue-600 font-medium" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                  In Progress
-                </span>
-              </div>
-              <span className="text-xs text-gray-500" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                {progress.completed_steps}/{progress.total_steps}
-              </span>
-            </div>
-            <Progress value={progress.completion_percentage} className="h-1.5 w-full" />
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="space-y-1 w-full cursor-help">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-blue-600" />
+                      <span className="text-xs text-blue-600 font-medium" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                        In Progress
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-500" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                      {progress.completed_steps}/{progress.total_steps}
+                    </span>
+                  </div>
+                  <Progress value={progress.completion_percentage} className="h-1.5 w-full" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="space-y-1">
+                  <p className="font-medium">Onboarding Progress</p>
+                  <p className="text-sm">Current step: {currentStepName}</p>
+                  <div className="space-y-0.5">
+                    {stepNames.slice(0, progress.total_steps).map((step, index) => (
+                      <div key={step} className="flex items-center gap-2 text-xs">
+                        {index < progress.completed_steps ? (
+                          <CheckCircle2 className="w-3 h-3 text-green-500" />
+                        ) : (
+                          <Clock className="w-3 h-3 text-gray-400" />
+                        )}
+                        <span className={index < progress.completed_steps ? 'text-green-600' : 'text-gray-500'}>
+                          {step}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         );
       }
 

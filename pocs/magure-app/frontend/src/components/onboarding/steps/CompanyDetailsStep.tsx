@@ -12,6 +12,7 @@ interface CompanyDetailsStepProps {
   onSubmit: (data: Omit<CompanyDetailsData, 'token'>) => Promise<boolean>;
   onComplete: () => void;
   isLoading: boolean;
+  tenantName?: string;
 }
 
 interface FormData {
@@ -45,7 +46,7 @@ const industries = [
   'Other',
 ];
 
-export function CompanyDetailsStep({ onSubmit, onComplete, isLoading }: CompanyDetailsStepProps) {
+export function CompanyDetailsStep({ onSubmit, onComplete, isLoading, tenantName }: CompanyDetailsStepProps) {
   const {
     register,
     handleSubmit,
@@ -53,7 +54,11 @@ export function CompanyDetailsStep({ onSubmit, onComplete, isLoading }: CompanyD
     setValue,
     watch,
     reset,
-  } = useForm<FormData>();
+  } = useForm<FormData>({
+    defaultValues: {
+      company_name: tenantName || '', // Pre-populate with tenant name
+    }
+  });
 
   const watchCompanySize = watch('company_size');
 

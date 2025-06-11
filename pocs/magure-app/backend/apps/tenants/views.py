@@ -8,12 +8,20 @@ from django_tenants.utils import schema_context
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 
-from .models import Tenant, TenantOnboarding
+from .models import Tenant
 from .serializers import (
     TenantCreateSerializer, TenantInfoSerializer, OnboardingTokenSerializer,
     OnboardingStepSerializer, ProfileSetupSerializer, CompanyDetailsSerializer,
     PreferencesSerializer, SendInvitationSerializer
 )
+from .onboarding_serializers import (
+    EnhancedProfileSetupSerializer, EnhancedCompanyDetailsSerializer,
+    EnhancedPreferencesSerializer, OnboardingStatusSerializer, 
+    OnboardingStepSerializer as EnhancedOnboardingStepSerializer
+)
+from .onboarding_models import TenantProfile, AdminProfile, WorkspacePreferences, OnboardingProgress
+from config.domain_config import get_frontend_url, get_dashboard_url
+from django.utils import timezone
 from services.email_service import EmailService
 
 class TenantViewSet(
@@ -83,12 +91,16 @@ class TenantViewSet(
 
         tenant_name = tenant.name
         
+        # Check if schema exists before attempting deletion
+        schema_exists = self._check_schema_exists(tenant.schema_name)
+        
         try:
-            # Django-tenants with auto_drop_schema=True will automatically:
-            # 1. Drop the PostgreSQL schema and all its data
-            # 2. Delete the tenant model instance
-            # 3. Clean up related Domain and TenantOnboarding records via CASCADE
-            tenant.delete()
+            if schema_exists:
+                # Schema exists, proceed with normal deletion
+                tenant.delete()
+            else:
+                # Schema doesn't exist, delete tenant record directly
+                self._delete_tenant_record_only(tenant)
             
             return Response({
                 'message': f'Tenant "{tenant_name}" deleted successfully. You can now create a new tenant with the same details.'
@@ -100,19 +112,67 @@ class TenantViewSet(
             
             if 'does not exist' in error_str or 'schema' in error_str:
                 # Schema doesn't exist, but we can still delete the tenant record
-                # First, temporarily disable auto_drop_schema to avoid the error
-                tenant.auto_drop_schema = False
-                tenant.save()
-                tenant.delete()
-                
-                return Response({
-                    'message': f'Tenant "{tenant_name}" deleted successfully. Schema was already removed or never existed.'
-                }, status=status.HTTP_200_OK)
+                # Use raw SQL to bypass Django's schema creation logic
+                try:
+                    from django.db import connection
+                    
+                    # Get tenant ID before deletion
+                    tenant_id = tenant.id
+                    
+                    # Delete tenant record directly from database to avoid schema operations
+                    with connection.cursor() as cursor:
+                        # Delete related records first (CASCADE should handle this, but being explicit)
+                        cursor.execute("DELETE FROM tenants_domain WHERE tenant_id = %s", [tenant_id])
+                        cursor.execute("DELETE FROM tenants_tenantonboarding WHERE tenant_id = %s", [tenant_id])
+                        cursor.execute("DELETE FROM tenant_profiles WHERE tenant_id = %s", [tenant_id])
+                        cursor.execute("DELETE FROM workspace_preferences WHERE tenant_id = %s", [tenant_id])
+                        cursor.execute("DELETE FROM onboarding_progress WHERE tenant_id = %s", [tenant_id])
+                        # Delete the tenant record
+                        cursor.execute("DELETE FROM tenants_tenant WHERE id = %s", [tenant_id])
+                    
+                    return Response({
+                        'message': f'Tenant "{tenant_name}" deleted successfully. Schema was already removed or never existed.'
+                    }, status=status.HTTP_200_OK)
+                    
+                except Exception as inner_e:
+                    return Response({
+                        'error': f'Failed to delete tenant record: {str(inner_e)}'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             else:
                 # Other unexpected errors
                 return Response({
                     'error': f'Failed to delete tenant: {str(e)}'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _check_schema_exists(self, schema_name):
+        """Check if a PostgreSQL schema exists"""
+        try:
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = %s)",
+                    [schema_name]
+                )
+                return cursor.fetchone()[0]
+        except Exception:
+            return False
+    
+    def _delete_tenant_record_only(self, tenant):
+        """Delete tenant record directly from database without schema operations"""
+        from django.db import connection
+        
+        tenant_id = tenant.id
+        
+        # Delete tenant record directly from database to avoid schema operations
+        with connection.cursor() as cursor:
+            # Delete related records first (domains, onboarding progress, etc.)
+            cursor.execute("DELETE FROM tenants_domain WHERE tenant_id = %s", [tenant_id])
+            cursor.execute("DELETE FROM tenants_tenantonboarding WHERE tenant_id = %s", [tenant_id])
+            cursor.execute("DELETE FROM tenant_profiles WHERE tenant_id = %s", [tenant_id])
+            cursor.execute("DELETE FROM workspace_preferences WHERE tenant_id = %s", [tenant_id])
+            cursor.execute("DELETE FROM onboarding_progress WHERE tenant_id = %s", [tenant_id])
+            # Delete the main tenant record
+            cursor.execute("DELETE FROM tenants_tenant WHERE id = %s", [tenant_id])
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsSuperAdmin])
     def send_invitation(self, request, pk=None):
@@ -131,16 +191,20 @@ class TenantViewSet(
         # Generate new onboarding token (always creates fresh token)
         token = tenant.generate_onboarding_token()
         
-        # Mark email as sent in onboarding tracker
+        # Mark email as sent in enhanced onboarding tracker
         try:
-            onboarding = tenant.onboarding
-            # Don't mark email_sent again if already marked (to preserve progress)
-            if not onboarding.email_sent:
-                onboarding.mark_step_completed('email_sent')
-        except TenantOnboarding.DoesNotExist:
-            TenantOnboarding.objects.create(tenant=tenant)
-            onboarding = tenant.onboarding
-            onboarding.mark_step_completed('email_sent')
+            progress = tenant.onboarding_progress
+        except OnboardingProgress.DoesNotExist:
+            progress = OnboardingProgress.objects.create(
+                tenant=tenant,
+                session_id='',
+                ip_address='',
+                user_agent='system_invitation'
+            )
+        
+        # Mark email step as completed if not already done
+        if 'EMAIL_INVITATION' not in progress.completed_steps:
+            progress.mark_step_completed('EMAIL_INVITATION')
         
         # Update tenant status
         tenant.onboarding_status = Tenant.OnboardingStatus.IN_PROGRESS
@@ -172,7 +236,7 @@ class TenantViewSet(
 
 
 class OnboardingVerifyTokenView(APIView):
-    """Verify onboarding token and return tenant info"""
+    """Verify onboarding token and return tenant info with environment-aware URLs"""
     permission_classes = [AllowAny]
     
     def post(self, request):
@@ -182,21 +246,57 @@ class OnboardingVerifyTokenView(APIView):
         token = serializer.validated_data['token']
         tenant = Tenant.objects.get(onboarding_token=token)
         
+        # Get or create onboarding progress tracker
+        progress, created = OnboardingProgress.objects.get_or_create(
+            tenant=tenant,
+            defaults={
+                'session_id': request.session.session_key or '',
+                'ip_address': self._get_client_ip(request),
+                'user_agent': request.META.get('HTTP_USER_AGENT', '')
+            }
+        )
+        
+        # Prepare response with environment info
+        environment_info = {
+            'frontend_url': get_frontend_url(tenant.schema_name),
+            'dashboard_url': get_dashboard_url(tenant.schema_name),
+            'api_domain': request.get_host(),
+            'is_development': 'localhost' in request.get_host() or '127.0.0.1' in request.get_host()
+        }
+        
         # Get tenant info with onboarding progress
         tenant_info = TenantInfoSerializer(tenant).data
         
         return Response({
             'tenant': tenant_info,
-            'valid': True
+            'valid': True,
+            'onboarding_progress': {
+                'current_step': progress.current_step,
+                'completion_percentage': progress.completion_percentage,
+                'completed_steps': progress.completed_steps,
+                'total_steps': progress.total_steps,
+                'can_edit_steps': {step[0]: progress.can_edit_step(step[0]) for step in OnboardingProgress.STEPS}
+            },
+            'environment_info': environment_info
         }, status=status.HTTP_200_OK)
+    
+    def _get_client_ip(self, request):
+        """Get client IP address from request"""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
 
 
 class OnboardingProfileSetupView(APIView):
-    """Handle tenant admin profile setup"""
+    """Enhanced tenant admin profile setup"""
     permission_classes = [AllowAny]
     
     def post(self, request):
-        serializer = ProfileSetupSerializer(data=request.data)
+        serializer = EnhancedProfileSetupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         token = serializer.validated_data['token']
@@ -208,74 +308,173 @@ class OnboardingProfileSetupView(APIView):
             admin_user = User.objects.filter(role='tenant_admin').first()
             
             if admin_user:
+                # Update basic profile and set password
                 admin_user.first_name = serializer.validated_data['first_name']
                 admin_user.last_name = serializer.validated_data['last_name']
                 admin_user.set_password(serializer.validated_data['password'])
                 admin_user.save()
+                
+                # Create or update admin profile with enhanced data
+                admin_profile, created = AdminProfile.objects.get_or_create(
+                    user=admin_user,
+                    defaults={
+                        'job_title': serializer.validated_data.get('job_title', ''),
+                        'department': serializer.validated_data.get('department', ''),
+                        'phone_number': serializer.validated_data.get('phone_number', ''),
+                        'linkedin_profile': serializer.validated_data.get('linkedin_profile', ''),
+                        'preferred_language': serializer.validated_data.get('preferred_language', 'en'),
+                        'two_factor_enabled': serializer.validated_data.get('two_factor_enabled', False),
+                    }
+                )
+                
+                # Handle profile avatar if provided
+                if 'profile_avatar' in serializer.validated_data:
+                    admin_profile.profile_avatar = serializer.validated_data['profile_avatar']
+                    admin_profile.save()
         
-        # Mark profile setup as completed
-        onboarding = tenant.onboarding
-        onboarding.mark_step_completed('profile_setup')
+        # Mark profile setup as completed and store step data
+        progress = tenant.onboarding_progress
+        step_data = {
+            'first_name': serializer.validated_data['first_name'],
+            'last_name': serializer.validated_data['last_name'],
+            'job_title': serializer.validated_data.get('job_title', ''),
+            'department': serializer.validated_data.get('department', ''),
+            'preferred_language': serializer.validated_data.get('preferred_language', 'en'),
+        }
+        progress.mark_step_completed('PROFILE_SETUP', step_data)
         
         return Response({
-            'message': 'Profile setup completed successfully'
+            'message': 'Admin profile setup completed successfully',
+            'next_step': progress.current_step,
+            'completion_percentage': progress.completion_percentage
         }, status=status.HTTP_200_OK)
 
 
 class OnboardingCompanyDetailsView(APIView):
-    """Handle tenant company details setup"""
+    """Enhanced tenant company details setup"""
     permission_classes = [AllowAny]
     
     def post(self, request):
-        serializer = CompanyDetailsSerializer(data=request.data)
+        serializer = EnhancedCompanyDetailsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         token = serializer.validated_data['token']
         tenant = Tenant.objects.get(onboarding_token=token)
         
-        # Update tenant with company details
+        # Update tenant with basic company details
         tenant.name = serializer.validated_data['company_name']
         tenant.save()
         
-        # You could save additional company details in a separate model
-        # For now, we'll just mark the step as completed
-        onboarding = tenant.onboarding
-        onboarding.mark_step_completed('company_details')
+        # Create or update tenant profile with enhanced company details
+        tenant_profile, created = TenantProfile.objects.get_or_create(
+            tenant=tenant,
+            defaults={
+                'company_website': serializer.validated_data.get('company_website', ''),
+                'company_description': serializer.validated_data.get('company_description', ''),
+                'business_type': serializer.validated_data.get('business_type', 'B2B'),
+                'annual_revenue_range': serializer.validated_data.get('annual_revenue_range', ''),
+                'founded_year': serializer.validated_data.get('founded_year'),
+                'primary_contact_phone': serializer.validated_data.get('primary_contact_phone', ''),
+                'street_address': serializer.validated_data.get('street_address', ''),
+                'city': serializer.validated_data.get('city', ''),
+                'state_province': serializer.validated_data.get('state_province', ''),
+                'postal_code': serializer.validated_data.get('postal_code', ''),
+                'country': serializer.validated_data.get('country', ''),
+            }
+        )
+        
+        # Handle company logo if provided
+        if 'company_logo' in serializer.validated_data:
+            tenant_profile.company_logo = serializer.validated_data['company_logo']
+            tenant_profile.save()
+        
+        # Mark company details as completed and store step data
+        progress = tenant.onboarding_progress
+        step_data = {
+            'company_name': serializer.validated_data['company_name'],
+            'company_size': serializer.validated_data['company_size'],
+            'industry': serializer.validated_data['industry'],
+            'business_type': serializer.validated_data.get('business_type', 'B2B'),
+            'country': serializer.validated_data.get('country', ''),
+            'city': serializer.validated_data.get('city', ''),
+        }
+        progress.mark_step_completed('COMPANY_DETAILS', step_data)
         
         return Response({
-            'message': 'Company details saved successfully'
+            'message': 'Company details saved successfully',
+            'next_step': progress.current_step,
+            'completion_percentage': progress.completion_percentage
         }, status=status.HTTP_200_OK)
 
 
 class OnboardingPreferencesView(APIView):
-    """Handle tenant preferences setup"""
+    """Enhanced tenant workspace preferences setup"""
     permission_classes = [AllowAny]
     
     def post(self, request):
-        serializer = PreferencesSerializer(data=request.data)
+        serializer = EnhancedPreferencesSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         token = serializer.validated_data['token']
         tenant = Tenant.objects.get(onboarding_token=token)
         
-        # Save preferences (you might want to create a TenantPreferences model)
-        # For now, we'll just mark the step as completed
-        onboarding = tenant.onboarding
-        onboarding.mark_step_completed('preferences')
+        # Create or update workspace preferences
+        workspace_prefs, created = WorkspacePreferences.objects.get_or_create(
+            tenant=tenant,
+            defaults={
+                'currency': serializer.validated_data.get('currency', 'USD'),
+                'number_format': serializer.validated_data.get('number_format', 'US'),
+                'first_day_of_week': serializer.validated_data.get('first_day_of_week', 'MONDAY'),
+                'work_start_time': serializer.validated_data.get('work_start_time', '09:00'),
+                'work_end_time': serializer.validated_data.get('work_end_time', '17:00'),
+                'work_days': serializer.validated_data.get('work_days', [0, 1, 2, 3, 4]),
+                'auto_logout_minutes': serializer.validated_data.get('auto_logout_minutes', 480),
+                'enabled_modules': serializer.validated_data.get('enabled_modules', ['ideas', 'dashboard']),
+                'email_provider': serializer.validated_data.get('email_provider', ''),
+                'calendar_integration_enabled': serializer.validated_data.get('calendar_integration_enabled', False),
+                'slack_integration_enabled': serializer.validated_data.get('slack_integration_enabled', False),
+                'data_retention_days': serializer.validated_data.get('data_retention_days', 365),
+                'backup_frequency': serializer.validated_data.get('backup_frequency', 'WEEKLY'),
+            }
+        )
         
-        # Check if onboarding is now completed and send notification email
-        is_completed = tenant.onboarding_status == Tenant.OnboardingStatus.COMPLETED
-        if is_completed:
+        # Mark workspace configuration as completed and store step data
+        progress = tenant.onboarding_progress
+        step_data = {
+            'timezone': serializer.validated_data.get('timezone', 'UTC'),
+            'currency': serializer.validated_data.get('currency', 'USD'),
+            'date_format': serializer.validated_data.get('date_format', 'MM/DD/YYYY'),
+            'theme': serializer.validated_data.get('theme', 'system'),
+            'notifications_enabled': serializer.validated_data.get('notifications_enabled', True),
+            'enabled_modules': serializer.validated_data.get('enabled_modules', ['ideas', 'dashboard']),
+        }
+        progress.mark_step_completed('PREFERENCES', step_data)
+        
+        # Check if onboarding is now completed
+        if progress.current_step == 'COMPLETE':
+            # Update tenant onboarding status and set completion timestamp
+            tenant.onboarding_status = Tenant.OnboardingStatus.COMPLETED
+            tenant.onboarding_completed_at = timezone.now()
+            tenant.save()
+            
+            # Send completion notification email
             EmailService.send_onboarding_completion_notification(tenant)
+            
+            is_completed = True
+        else:
+            is_completed = False
         
         return Response({
-            'message': 'Preferences saved successfully',
-            'onboarding_completed': is_completed
+            'message': 'Workspace preferences saved successfully',
+            'next_step': progress.current_step,
+            'completion_percentage': progress.completion_percentage,
+            'onboarding_completed': is_completed,
+            'dashboard_url': get_dashboard_url(tenant.schema_name) if is_completed else None
         }, status=status.HTTP_200_OK)
 
 
 class OnboardingStatusView(APIView):
-    """Get onboarding status for a token"""
+    """Get comprehensive onboarding status for a token"""
     permission_classes = [AllowAny]
     
     def post(self, request):
@@ -286,21 +485,171 @@ class OnboardingStatusView(APIView):
         tenant = Tenant.objects.get(onboarding_token=token)
         
         try:
-            onboarding = tenant.onboarding
-            return Response({
+            progress = tenant.onboarding_progress
+            
+            # Prepare environment info
+            environment_info = {
+                'frontend_url': get_frontend_url(tenant.schema_name),
+                'dashboard_url': get_dashboard_url(tenant.schema_name),
+                'api_domain': request.get_host(),
+                'is_development': 'localhost' in request.get_host() or '127.0.0.1' in request.get_host()
+            }
+            
+            # Prepare step editing capabilities
+            can_edit_steps = {step[0]: progress.can_edit_step(step[0]) for step in OnboardingProgress.STEPS}
+            
+            status_data = {
                 'tenant_name': tenant.name,
                 'onboarding_status': tenant.onboarding_status,
-                'completion_percentage': onboarding.completion_percentage,
-                'completed_steps': onboarding.completed_steps,
-                'total_steps': onboarding.total_steps,
-                'steps': {
-                    'email_sent': onboarding.email_sent,
-                    'profile_setup': onboarding.profile_setup_completed,
-                    'company_details': onboarding.company_details_completed,
-                    'preferences': onboarding.preferences_completed
-                }
-            }, status=status.HTTP_200_OK)
-        except TenantOnboarding.DoesNotExist:
+                'current_step': progress.current_step,
+                'completion_percentage': progress.completion_percentage,
+                'completed_steps': progress.completed_steps,
+                'total_steps': progress.total_steps,
+                'can_edit_steps': can_edit_steps,
+                'step_data': progress.step_data,
+                'environment_info': environment_info,
+                'last_activity': progress.last_activity_at,
+                'started_at': progress.started_at,
+                'completed_at': progress.completed_at
+            }
+            
+            response = OnboardingStatusSerializer(status_data)
+            return Response(response.data, status=status.HTTP_200_OK)
+            
+        except OnboardingProgress.DoesNotExist:
+            # Create new progress tracker if it doesn't exist
+            progress = OnboardingProgress.objects.create(
+                tenant=tenant,
+                session_id=request.session.session_key or '',
+                ip_address=self._get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+            )
+            
+            # Return initial status
+            environment_info = {
+                'frontend_url': get_frontend_url(tenant.schema_name),
+                'dashboard_url': get_dashboard_url(tenant.schema_name),
+                'api_domain': request.get_host(),
+                'is_development': 'localhost' in request.get_host() or '127.0.0.1' in request.get_host()
+            }
+            
+            status_data = {
+                'tenant_name': tenant.name,
+                'onboarding_status': tenant.onboarding_status,
+                'current_step': 'WELCOME',
+                'completion_percentage': 0,
+                'completed_steps': [],
+                'total_steps': 6,
+                'can_edit_steps': {'WELCOME': True},
+                'step_data': {},
+                'environment_info': environment_info,
+                'last_activity': progress.last_activity_at,
+                'started_at': progress.started_at,
+                'completed_at': None
+            }
+            
+            response = OnboardingStatusSerializer(status_data)
+            return Response(response.data, status=status.HTTP_200_OK)
+    
+    def _get_client_ip(self, request):
+        """Get client IP address from request"""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+
+class OnboardingStepManagementView(APIView):
+    """Handle individual step completion and editing"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        """Complete or update a specific onboarding step"""
+        serializer = EnhancedOnboardingStepSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        token = serializer.validated_data['token']
+        step_name = serializer.validated_data['step_name']
+        step_data = serializer.validated_data.get('step_data', {})
+        
+        tenant = Tenant.objects.get(onboarding_token=token)
+        progress = tenant.onboarding_progress
+        
+        # Check if step can be edited
+        if not progress.can_edit_step(step_name):
             return Response({
-                'error': 'Onboarding record not found'
+                'error': f'Step {step_name} cannot be edited at this time'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Mark step as completed with data
+        progress.mark_step_completed(step_name, step_data)
+        
+        return Response({
+            'message': f'Step {step_name} completed successfully',
+            'current_step': progress.current_step,
+            'completion_percentage': progress.completion_percentage,
+            'next_step': progress.current_step if progress.current_step != 'COMPLETE' else None
+        }, status=status.HTTP_200_OK)
+    
+    def put(self, request):
+        """Update data for a previously completed step"""
+        serializer = EnhancedOnboardingStepSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        token = serializer.validated_data['token']
+        step_name = serializer.validated_data['step_name']
+        step_data = serializer.validated_data.get('step_data', {})
+        
+        tenant = Tenant.objects.get(onboarding_token=token)
+        progress = tenant.onboarding_progress
+        
+        # Check if step can be edited
+        if not progress.can_edit_step(step_name):
+            return Response({
+                'error': f'Step {step_name} cannot be edited at this time'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Update step data
+        progress.step_data[step_name] = step_data
+        progress.save()
+        
+        return Response({
+            'message': f'Step {step_name} updated successfully',
+            'step_data': progress.get_step_data(step_name)
+        }, status=status.HTTP_200_OK)
+    
+    def get(self, request):
+        """Get data for a specific step"""
+        token = request.query_params.get('token')
+        step_name = request.query_params.get('step_name')
+        
+        if not token or not step_name:
+            return Response({
+                'error': 'Both token and step_name are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            tenant = Tenant.objects.get(onboarding_token=token)
+            progress = tenant.onboarding_progress
+            
+            step_data = progress.get_step_data(step_name)
+            is_completed = progress.is_step_completed(step_name)
+            can_edit = progress.can_edit_step(step_name)
+            
+            return Response({
+                'step_name': step_name,
+                'step_data': step_data,
+                'is_completed': is_completed,
+                'can_edit': can_edit
+            }, status=status.HTTP_200_OK)
+            
+        except Tenant.DoesNotExist:
+            return Response({
+                'error': 'Invalid onboarding token'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except OnboardingProgress.DoesNotExist:
+            return Response({
+                'error': 'Onboarding progress not found'
             }, status=status.HTTP_404_NOT_FOUND)

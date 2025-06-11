@@ -28,6 +28,7 @@ interface UseOnboardingActions {
   submitProfileSetup: (data: Omit<ProfileSetupData, 'token'>) => Promise<boolean>;
   submitCompanyDetails: (data: Omit<CompanyDetailsData, 'token'>) => Promise<boolean>;
   submitPreferences: (data: Omit<PreferencesData, 'token'>) => Promise<boolean>;
+  hasVerifiedToken: boolean
 }
 
 export function useOnboarding(initialToken?: string): UseOnboardingState & UseOnboardingActions {
@@ -40,20 +41,21 @@ export function useOnboarding(initialToken?: string): UseOnboardingState & UseOn
     currentStep: 0,
   });
 
+  const [hasVerifiedToken, setHasVerifiedToken] = useState(false);
   const [token, setToken] = useState<string | null>(initialToken || null);
 
   // Map onboarding steps to step numbers
   const getStepNumber = (currentStep: string): number => {
     switch (currentStep) {
-      case 'email_invitation':
+      case 'EMAIL_INVITATION':
         return 0;
-      case 'profile_setup':
+      case 'PROFILE_SETUP':
         return 1;
-      case 'company_details':
+      case 'COMPANY_DETAILS':
         return 2;
-      case 'preferences':
+      case 'PREFERENCES':
         return 3;
-      case 'completed':
+      case 'COMPLETE':
         return 4;
       default:
         return 0;
@@ -62,22 +64,23 @@ export function useOnboarding(initialToken?: string): UseOnboardingState & UseOn
 
   const verifyToken = async (tokenToVerify: string): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
-    
+
     try {
       const result = await verifyOnboardingToken(tokenToVerify);
-      
+
       if (result.valid) {
         setToken(tokenToVerify);
         setState(prev => ({
           ...prev,
           tenant: result.tenant,
           isTokenValid: true,
-          currentStep: getStepNumber(result.tenant.onboarding_progress?.current_step || 'profile_setup'),
+          currentStep: getStepNumber(result.tenant.onboarding_progress?.current_step || 'PROFILE_SETUP'),
           isLoading: false,
         }));
-        
+
         // Also fetch the detailed status
         await refreshStatus();
+        setHasVerifiedToken(true)
         return true;
       } else {
         setState(prev => ({
@@ -86,16 +89,20 @@ export function useOnboarding(initialToken?: string): UseOnboardingState & UseOn
           isTokenValid: false,
           isLoading: false,
         }));
+        setHasVerifiedToken(true)
         return false;
       }
+
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to verify token';
+      setHasVerifiedToken(true)
       setState(prev => ({
         ...prev,
-        error: errorMessage,
+        error: 'Invalid or expired onboarding token',
         isTokenValid: false,
         isLoading: false,
       }));
+
+      const errorMessage = error instanceof Error ? error.message : 'Failed to verify token';
       toast.error(errorMessage);
       return false;
     }
@@ -106,10 +113,26 @@ export function useOnboarding(initialToken?: string): UseOnboardingState & UseOn
 
     try {
       const status = await getOnboardingStatus(token);
+
+      // Handle both new and legacy status format for backward compatibility
+      let currentStep = 0;
+      if (status.current_step) {
+        // New format
+        currentStep = getStepNumber(status.current_step);
+      } else if ('steps' in status && typeof status.steps === 'object') {
+        // Legacy format - handle with type safety
+        const legacySteps = status.steps as any;
+        if (legacySteps.email_sent) {
+          currentStep = getStepNumber('profile_setup');
+        } else {
+          currentStep = getStepNumber('email_invitation');
+        }
+      }
+
       setState(prev => ({
         ...prev,
         status,
-        currentStep: Math.max(prev.currentStep, getStepNumber(status.steps.email_sent ? 'profile_setup' : 'email_invitation')),
+        currentStep: Math.max(prev.currentStep, currentStep),
       }));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch onboarding status';
@@ -171,18 +194,18 @@ export function useOnboarding(initialToken?: string): UseOnboardingState & UseOn
 
     try {
       const result = await completePreferences({ ...data, token });
-      setState(prev => ({ 
-        ...prev, 
-        currentStep: result.onboarding_completed ? 4 : 3, 
-        isLoading: false 
+      setState(prev => ({
+        ...prev,
+        currentStep: result.onboarding_completed ? 4 : 3,
+        isLoading: false
       }));
-      
+
       if (result.onboarding_completed) {
         toast.success('Onboarding completed successfully! Welcome to your new workspace!');
       } else {
         toast.success('Preferences saved successfully!');
       }
-      
+
       await refreshStatus();
       return true;
     } catch (error) {
@@ -195,7 +218,7 @@ export function useOnboarding(initialToken?: string): UseOnboardingState & UseOn
 
   // Auto-verify token on mount if provided
   useEffect(() => {
-    if (initialToken && !state.isTokenValid) {
+    if (initialToken) {
       verifyToken(initialToken);
     }
   }, [initialToken]);
@@ -207,5 +230,6 @@ export function useOnboarding(initialToken?: string): UseOnboardingState & UseOn
     submitProfileSetup,
     submitCompanyDetails,
     submitPreferences,
+    hasVerifiedToken
   };
 }

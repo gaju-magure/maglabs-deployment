@@ -3,7 +3,8 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.utils.text import slugify
 
-from .models import Tenant, Domain, TenantOnboarding
+from .models import Tenant, Domain
+from .onboarding_models import OnboardingProgress
 
 User = get_user_model()
 
@@ -11,7 +12,7 @@ class TenantCreateSerializer(serializers.Serializer):
     name           = serializers.CharField(max_length=255)
     domain_prefix  = serializers.CharField(max_length=64)
     admin_email    = serializers.EmailField(write_only=True)
-    admin_password = serializers.CharField(write_only=True, min_length=8)
+    status         = serializers.ChoiceField(choices=Tenant.Status.choices, default=Tenant.Status.ACTIVE)
 
     def validate_domain_prefix(self, value):
         prefix = slugify(value)
@@ -46,12 +47,15 @@ class TenantCreateSerializer(serializers.Serializer):
         schema_name = validated_data["schema_name"]
         domain_str  = validated_data["full_domain"]
         admin_email = validated_data["admin_email"]
+        status      = validated_data.get("status", Tenant.Status.ACTIVE)
 
         # 1) Create the Tenant (automatically creates schema and runs migrations)
+        # Default onboarding status is PENDING, will be set to IN_PROGRESS when invitation is sent
         tenant = Tenant(
             schema_name=schema_name, 
             name=name,
             admin_email=admin_email,
+            status=status,
             onboarding_status=Tenant.OnboardingStatus.PENDING
         )
         tenant.save()
@@ -59,20 +63,27 @@ class TenantCreateSerializer(serializers.Serializer):
         # 2) Register domain in public
         Domain.objects.create(domain=domain_str, tenant=tenant, is_primary=True)
 
-        # 3) Create onboarding tracker
-        TenantOnboarding.objects.create(tenant=tenant)
+        # 3) Create enhanced onboarding progress tracker
+        OnboardingProgress.objects.create(
+            tenant=tenant,
+            session_id='',
+            ip_address='',
+            user_agent='system_creation'
+        )
 
-        # 4) Create tenant admin user
+        # 4) Create tenant admin user (password will be set during onboarding)
         with schema_context(tenant.schema_name):
             User = get_user_model()
-            User.objects.create_user(
-                username=validated_data["admin_email"],
-                email=validated_data["admin_email"],
-                password=validated_data["admin_password"],
+            admin_user = User.objects.create_user(
+                username=admin_email,
+                email=admin_email,
+                password=None,  # No password initially - set during onboarding
                 role="tenant_admin",
                 is_staff=True,
                 is_superuser=False,
             )
+            admin_user.set_unusable_password()
+            admin_user.save()
 
         return tenant
 
@@ -86,6 +97,7 @@ class TenantInfoSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "status",
             "created_at",
             "updated_at",
             "primary_domain",
@@ -100,27 +112,15 @@ class TenantInfoSerializer(serializers.ModelSerializer):
     
     def get_onboarding_progress(self, obj):
         try:
-            onboarding = obj.onboarding
+            progress = obj.onboarding_progress
             return {
-                'completion_percentage': onboarding.completion_percentage,
-                'completed_steps': onboarding.completed_steps,
-                'total_steps': onboarding.total_steps,
-                'current_step': self._get_current_step(onboarding)
+                'completion_percentage': progress.completion_percentage,
+                'completed_steps': len(progress.completed_steps),
+                'total_steps': progress.total_steps,
+                'current_step': progress.current_step
             }
-        except TenantOnboarding.DoesNotExist:
+        except OnboardingProgress.DoesNotExist:
             return None
-    
-    def _get_current_step(self, onboarding):
-        if not onboarding.email_sent:
-            return 'email_invitation'
-        elif not onboarding.profile_setup_completed:
-            return 'profile_setup'
-        elif not onboarding.company_details_completed:
-            return 'company_details'
-        elif not onboarding.preferences_completed:
-            return 'preferences'
-        else:
-            return 'completed'
 
 
 class OnboardingTokenSerializer(serializers.Serializer):

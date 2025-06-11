@@ -21,7 +21,16 @@ class Tenant(TenantMixin):
         IN_PROGRESS = 'in_progress', 'In Progress'
         COMPLETED = 'completed', 'Completed'
     
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        INACTIVE = 'inactive', 'Inactive'
+    
     name = models.CharField(max_length=255, unique=True)
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.ACTIVE
+    )
     paid_until = models.DateField(null=True, blank=True)
     on_trial = models.BooleanField(default=True)
     
@@ -138,3 +147,12 @@ class TenantOnboarding(models.Model):
     
     def __str__(self):
         return f"Onboarding for {self.tenant.name} ({self.completion_percentage:.0f}%)"
+
+
+# Import branding models at the end to avoid circular imports
+from .branding_models import (
+    DefaultThemeTemplate, 
+    TenantBranding, 
+    TenantAsset, 
+    OnboardingBrandingChoices
+)

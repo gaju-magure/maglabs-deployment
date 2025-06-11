@@ -109,6 +109,7 @@ export function OnboardingWizard({
                 onPreferences,
       onComplete: () => handleStepComplete(activeStep),
       isLoading,
+      ...(activeStep === 2 && { tenantName }), // Pass tenantName to CompanyDetailsStep
     };
 
     return <StepComponent {...stepProps} />;

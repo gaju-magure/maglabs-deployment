@@ -27,26 +27,27 @@ export const createTenantActions = ({ onEdit, onDelete, onSendInvitation }: Tena
   onboardingActions.push({
     label: (tenant) => {
       const status = tenant.onboarding_status || 'pending';
-      switch (status) {
-        case 'pending':
-          return 'Send Invitation';
-        case 'in_progress':
-          return 'Resend Invitation';
-        case 'completed':
-          return 'Completed';
-        default:
-          return 'Send Invitation';
+      // More explicit logic: if completed, show "Completed"
+      // If pending or any uncertain state, show "Send Invitation"
+      // Only show "Resend" if explicitly in_progress
+      if (status === 'completed') {
+        return 'Completed';
+      } else if (status === 'in_progress') {
+        return 'Resend Invitation';
+      } else {
+        // Default to "Send Invitation" for pending and any other states
+        return 'Send Invitation';
       }
     },
     icon: (tenant) => {
       const status = tenant.onboarding_status || 'pending';
-      switch (status) {
-        case 'in_progress':
-          return <RefreshCw className="h-4 w-4" />;
-        case 'completed':
-          return <Mail className="h-4 w-4 opacity-50" />;
-        default:
-          return <Mail className="h-4 w-4" />;
+      if (status === 'completed') {
+        return <Mail className="h-4 w-4 opacity-50" />;
+      } else if (status === 'in_progress') {
+        return <RefreshCw className="h-4 w-4" />;
+      } else {
+        // Default to regular mail icon for pending and other states
+        return <Mail className="h-4 w-4" />;
       }
     },
     onClick: onSendInvitation,
@@ -54,15 +55,13 @@ export const createTenantActions = ({ onEdit, onDelete, onSendInvitation }: Tena
     className: 'text-blue-600 hover:text-blue-700 hover:bg-blue-50',
     title: (tenant) => {
       const status = tenant.onboarding_status || 'pending';
-      switch (status) {
-        case 'completed':
-          return 'Onboarding already completed';
-        case 'in_progress':
-          return 'Resend onboarding invitation (generates new token)';
-        case 'pending':
-          return 'Send onboarding invitation email';
-        default:
-          return 'Send onboarding invitation';
+      if (status === 'completed') {
+        return 'Onboarding already completed';
+      } else if (status === 'in_progress') {
+        return 'Resend onboarding invitation (generates new token)';
+      } else {
+        // Default for pending and other states
+        return 'Send onboarding invitation email';
       }
     },
     disabled: (tenant) => (tenant.onboarding_status || 'pending') === 'completed'

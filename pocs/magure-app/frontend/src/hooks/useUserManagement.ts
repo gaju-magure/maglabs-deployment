@@ -3,7 +3,9 @@ import { toast } from '@/hooks/use-toast';
 import { 
   getUsers, 
   createUser, 
+  updateUser,
   type CreateUserRequest, 
+  type UpdateUserRequest,
   type CreateUserResponse 
 } from '@/services/usersApi';
 import { UserData } from '@/components/tables';
@@ -20,6 +22,8 @@ export const useUserManagement = () => {
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<ExtendedUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<ExtendedUser | null>(null);
 
   // Fetch users function
@@ -78,10 +82,40 @@ export const useUserManagement = () => {
     }
   };
 
-  // Handle edit user (placeholder)
+  // Handle edit user
   const handleEditUser = (user: ExtendedUser) => {
-    console.log('Edit user:', user);
-    // TODO: Implement edit functionality
+    setEditingUser(user);
+    setIsEditModalOpen(true);
+  };
+
+  // Handle update user
+  const handleUpdateUser = async (userData: UpdateUserRequest) => {
+    if (!editingUser) return;
+    
+    try {
+      const updatedUser = await updateUser(editingUser.id, userData);
+      
+      // Update the user in the local state
+      setUsers(users.map(user => 
+        user.id === editingUser.id ? { ...user, ...updatedUser } : user
+      ));
+      
+      toast({
+        title: "Success",
+        description: `User "${userData.username || editingUser.username}" updated successfully`,
+      });
+      
+      setIsEditModalOpen(false);
+      setEditingUser(null);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update user';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // Handle delete user
@@ -122,6 +156,11 @@ export const useUserManagement = () => {
     setIsCreateModalOpen(false);
   };
 
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingUser(null);
+  };
+
   // Filtered data
   const filteredUsers = users.filter(user =>
     user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -148,14 +187,18 @@ export const useUserManagement = () => {
     
     // Modal states
     isCreateModalOpen,
+    isEditModalOpen,
+    editingUser,
     deletingUser,
     
     // Actions
     setSearchQuery,
     fetchUsers,
     handleCreateUser,
+    handleUpdateUser,
     openCreateModal,
     closeCreateModal,
+    closeEditModal,
     confirmDeleteUser,
     createActionHandlers,
     

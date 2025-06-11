@@ -16,11 +16,5 @@ class Idea(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ideas')
 
-    # AI scoring fields
-    clarity_score = models.FloatField(null=True, blank=True)
-    creativity_score = models.FloatField(null=True, blank=True)
-    feasibility_score = models.FloatField(null=True, blank=True)
-    relevance_score = models.FloatField(null=True, blank=True)
-
     def __str__(self):
         return self.title

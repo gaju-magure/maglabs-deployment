@@ -79,6 +79,59 @@ class Domain(DomainMixin):
     """
     pass
 
+
+class TenantDepartment(models.Model):
+    """Custom departments that can be created by each tenant"""
+    
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='custom_departments'
+    )
+    
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    
+    # Department hierarchy
+    parent_department = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sub_departments'
+    )
+    
+    # Department head
+    department_head = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='headed_departments'
+    )
+    
+    # Status
+    is_active = models.BooleanField(default=True)
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_departments'
+    )
+    
+    class Meta:
+        db_table = 'tenant_departments'
+        unique_together = ['tenant', 'name']
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.name} ({self.tenant.name})"
+
+
 # Import branding models at the end to avoid circular imports
 from .branding_models import (
     DefaultThemeTemplate, 

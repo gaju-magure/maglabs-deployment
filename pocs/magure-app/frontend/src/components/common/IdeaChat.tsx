@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { refineIdea, scoreIdea, createIdea } from '@/services/ideasApi';
+import { refineIdea, createIdea } from '@/services/ideasApi';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ProgressBars } from '@/components/common/ProgressBars';
 import { Send, Sparkles } from 'lucide-react';
 
 interface ChatMessage {
@@ -19,12 +18,6 @@ export const IdeaChat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  // Progress bar state: clarity, value, conciseness (0-100)
-  const [progress, setProgress] = useState<{ clarity: number; value: number; conciseness: number }>({
-    clarity: 0,
-    value: 0,
-    conciseness: 0,
-  });
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const scrollToBottom = () => {
@@ -57,14 +50,6 @@ export const IdeaChat: React.FC = () => {
         content: m.content,
       })));
       setMessages([...newMessages, { role: 'assistant' as const, content: refined }]);
-      
-      // Auto-score after refinement
-      // const result = await scoreIdea(idea);
-      // setProgress({
-      //   clarity: Math.round(((result.clarity || 0) / 10) * 100),
-      //   value: Math.round(((result.creativity || 0) / 10) * 100),
-      //   conciseness: Math.round(((result.feasibility || result.relevance || 0) / 10) * 100),
-      // });
     } catch (error) {
       setShowError(true);
       setMessages([...newMessages, { 
@@ -96,7 +81,6 @@ export const IdeaChat: React.FC = () => {
       setSubmitSuccess(true);
       setMessages([]);
       setIdea('');
-      setProgress({ clarity: 0, value: 0, conciseness: 0 });
     } catch (err) {
       alert('Failed to submit idea');
     } finally {
@@ -121,16 +105,6 @@ export const IdeaChat: React.FC = () => {
             </div>
           )}
           
-          {/* Progress Bars */}
-          {(progress.clarity > 0 || progress.value > 0 || progress.conciseness > 0) && (
-            <div className="animate-in slide-in-from-top duration-500">
-              <ProgressBars
-                clarity={progress.clarity}
-                value={progress.value}
-                conciseness={progress.conciseness}
-              />
-            </div>
-          )}
           {/* Chat area */}
           <div className="w-full flex-1 flex flex-col justify-end min-h-0">
             <div className="flex-1 flex flex-col justify-end overflow-y-auto scrollbar-thin scrollbar-thumb-rounded scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">

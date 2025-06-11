@@ -9,6 +9,19 @@ export interface CreateUserRequest {
   role: string;
 }
 
+export interface UpdateUserRequest {
+  username?: string;
+  email?: string;
+  password?: string;
+  first_name?: string;
+  last_name?: string;
+  role?: string;
+  job_title?: string;
+  phone_number?: string;
+  department_id?: number;
+  custom_role_id?: number;
+}
+
 export interface CreateUserResponse {
   id: string;
   username: string;
@@ -55,7 +68,21 @@ export async function getUsers(): Promise<UserListPaginationResponse> {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to create user');
+    throw new Error('Failed to get users');
+  }
+
+  return response.json();
+}
+
+export async function updateUser(userId: string, userData: UpdateUserRequest): Promise<CreateUserResponse> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/accounts/users/${userId}/`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(userData),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update user');
   }
 
   return response.json();

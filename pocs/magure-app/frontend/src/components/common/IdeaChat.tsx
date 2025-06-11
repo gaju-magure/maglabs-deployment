@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { refineIdea, createIdea } from '@/services/ideasApi';
+import { refineIdea, submitIdea } from '@/services/ideasApi';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Sparkles } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -17,6 +18,7 @@ export const IdeaChat: React.FC = () => {
   const [showError, setShowError] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { toast } = useToast();
   
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
@@ -73,16 +75,35 @@ export const IdeaChat: React.FC = () => {
   const handleSubmitIdea = async () => {
     setSubmitting(true);
     try {
-      await createIdea({
-        title: messages.filter(m => m.role === 'user')[0]?.content || 'Untitled Idea',
-        description: messages.map(m => m.content).join('\n'),
-        status: 'open',
-      });
+      // Extract title from first user message or create a summary
+      const firstUserMessage = messages.find(m => m.role === 'user')?.content || 'Untitled Idea';
+      const title = firstUserMessage.length > 50 
+        ? firstUserMessage.substring(0, 50) + '...' 
+        : firstUserMessage;
+      
+      // Get the last assistant message as the refined idea description
+      const lastAssistantMessage = messages.filter(m => m.role === 'assistant').pop();
+      const description = lastAssistantMessage?.content || messages.map(m => m.content).join('\n\n');
+      
+      await submitIdea(title, description);
       setSubmitSuccess(true);
       setMessages([]);
       setIdea('');
+      
+      // Show success toast
+      toast({
+        title: "Success!",
+        description: "Your idea has been submitted successfully.",
+      });
+      
+      // Reset success state after a delay
+      setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (err) {
-      alert('Failed to submit idea');
+      toast({
+        title: "Error",
+        description: "Failed to submit idea. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }

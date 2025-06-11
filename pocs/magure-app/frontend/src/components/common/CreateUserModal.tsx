@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserPlus } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { UserRole } from '@/enums/userRole';
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -37,6 +39,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   departments = [],
   customRoles = [],
 }) => {
+  const { user: currentUser } = useAuth();
+  
+  // Show profile fields only for tenant admins, not for superadmins
+  const showProfileFields = currentUser?.role === UserRole.TenantAdmin;
+  
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -55,7 +62,19 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await onSubmit(formData);
+      // Only include profile fields if user is tenant admin
+      const submitData = showProfileFields 
+        ? formData 
+        : {
+            username: formData.username,
+            email: formData.email,
+            password: formData.password,
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            role: formData.role,
+          };
+      
+      await onSubmit(submitData);
       setFormData({
         username: '',
         email: '',
@@ -168,72 +187,76 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             </Select>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="job_title" style={{ fontFamily: 'Satoshi, sans-serif' }}>Job Title</Label>
-            <Input
-              id="job_title"
-              value={formData.job_title}
-              onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-              placeholder="Software Engineer"
-              className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
-              style={{ fontFamily: 'Satoshi, sans-serif' }}
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="phone_number" style={{ fontFamily: 'Satoshi, sans-serif' }}>Phone Number</Label>
-            <Input
-              id="phone_number"
-              value={formData.phone_number}
-              onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-              placeholder="+1 (555) 123-4567"
-              className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
-              style={{ fontFamily: 'Satoshi, sans-serif' }}
-            />
-          </div>
-          
-          {departments.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="department" style={{ fontFamily: 'Satoshi, sans-serif' }}>Department</Label>
-              <Select 
-                value={formData.department_id?.toString() || ''} 
-                onValueChange={(value) => setFormData({ ...formData, department_id: value ? parseInt(value) : undefined })}
-              >
-                <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Department</SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          
-          {customRoles.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="custom_role" style={{ fontFamily: 'Satoshi, sans-serif' }}>Custom Role</Label>
-              <Select 
-                value={formData.custom_role_id?.toString() || ''} 
-                onValueChange={(value) => setFormData({ ...formData, custom_role_id: value ? parseInt(value) : undefined })}
-              >
-                <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                  <SelectValue placeholder="Select custom role" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Custom Role</SelectItem>
-                  {customRoles.map((role) => (
-                    <SelectItem key={role.id} value={role.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {showProfileFields && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="job_title" style={{ fontFamily: 'Satoshi, sans-serif' }}>Job Title</Label>
+                <Input
+                  id="job_title"
+                  value={formData.job_title}
+                  onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+                  placeholder="Software Engineer"
+                  className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
+                  style={{ fontFamily: 'Satoshi, sans-serif' }}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="phone_number" style={{ fontFamily: 'Satoshi, sans-serif' }}>Phone Number</Label>
+                <Input
+                  id="phone_number"
+                  value={formData.phone_number}
+                  onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                  placeholder="+1 (555) 123-4567"
+                  className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
+                  style={{ fontFamily: 'Satoshi, sans-serif' }}
+                />
+              </div>
+              
+              {departments.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="department" style={{ fontFamily: 'Satoshi, sans-serif' }}>Department</Label>
+                  <Select 
+                    value={formData.department_id?.toString() || ''} 
+                    onValueChange={(value) => setFormData({ ...formData, department_id: value ? parseInt(value) : undefined })}
+                  >
+                    <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Department</SelectItem>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              {customRoles.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="custom_role" style={{ fontFamily: 'Satoshi, sans-serif' }}>Custom Role</Label>
+                  <Select 
+                    value={formData.custom_role_id?.toString() || ''} 
+                    onValueChange={(value) => setFormData({ ...formData, custom_role_id: value ? parseInt(value) : undefined })}
+                  >
+                    <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                      <SelectValue placeholder="Select custom role" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Custom Role</SelectItem>
+                      {customRoles.map((role) => (
+                        <SelectItem key={role.id} value={role.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                          {role.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
           )}
           
           <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">

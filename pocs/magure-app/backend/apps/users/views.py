@@ -8,6 +8,7 @@ from apps.users.serializers import (
     UserDetailSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
+    UserBasicCreateSerializer,
     UserProfileSerializer,
     UserProfileUpdateSerializer,
     UserProfileAvatarSerializer,
@@ -53,7 +54,11 @@ class UserViewSet(viewsets.ModelViewSet):
         elif self.action == 'retrieve':
             return UserDetailSerializer
         elif self.action == 'create':
-            return UserCreateSerializer
+            # Use basic serializer for superadmins, full serializer for tenant admins
+            if self.request.user.role == "superadmin":
+                return UserBasicCreateSerializer
+            else:
+                return UserCreateSerializer
         elif self.action in ['update', 'partial_update']:
             return UserUpdateSerializer
         return UserDetailSerializer

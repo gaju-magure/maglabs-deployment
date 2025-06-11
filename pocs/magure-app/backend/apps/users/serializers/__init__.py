@@ -4,6 +4,7 @@ from .users import (
     UserDetailSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
+    UserBasicCreateSerializer,
 )
 from .tenant_user import TenantUserCreateSerializer
 from .profiles import (

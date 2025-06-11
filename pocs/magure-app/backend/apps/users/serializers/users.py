@@ -120,3 +120,19 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         
         instance.save()
         return instance
+
+
+class UserBasicCreateSerializer(serializers.ModelSerializer):
+    """Simplified user creation for superadmins - basic fields only"""
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = UserModel
+        fields = ['username', 'email', 'password', 'first_name', 'last_name', 'role']
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = UserModel(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user

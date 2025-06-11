@@ -1,115 +1,164 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Pin } from 'lucide-react';
-
-interface ContentPost {
-  id: string;
-  title: string;
-  content: string;
-  author: string;
-  timestamp: string;
-  isPinned: boolean;
-  type: 'announcement' | 'post' | 'file';
-}
+import { Pin, Loader2 } from 'lucide-react';
+import { getContentWallIdeas, toggleIdeaPin, type Idea } from '@/services/ideasApi';
+import { useToast } from '@/hooks/use-toast';
 
 export const ContentWallPage: React.FC = () => {
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [posts, setPosts] = useState<ContentPost[]>([
-    {
-      id: '1',
-      title: 'Welcome to the New Dashboard',
-      content: 'We are excited to introduce our new dashboard with enhanced features and improved user experience.',
-      author: 'Admin User',
-      timestamp: '2024-01-20 10:30',
-      isPinned: true,
-      type: 'announcement'
-    },
-    {
-      id: '2',
-      title: 'Q1 Company Meeting',
-      content: 'Join us for our quarterly meeting to discuss progress and upcoming initiatives.',
-      author: 'HR Team',
-      timestamp: '2024-01-19 14:15',
-      isPinned: false,
-      type: 'post'
-    }
-  ]);
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [togglingPin, setTogglingPin] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const handleCreatePost = (newPost: Omit<ContentPost, 'id' | 'timestamp'>) => {
-    const post: ContentPost = {
-      ...newPost,
-      id: Date.now().toString(),
-      timestamp: new Date().toLocaleString(),
+  // Load content wall ideas on mount
+  useEffect(() => {
+    const loadIdeas = async () => {
+      try {
+        setLoading(true);
+        const data = await getContentWallIdeas();
+        setIdeas(data);
+        setError(null);
+      } catch (err) {
+        setError('Failed to load ideas');
+        toast({
+          title: "Error",
+          description: "Failed to load content wall ideas",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
     };
-    setPosts([post, ...posts]);
-    setIsCreateModalOpen(false);
+
+    loadIdeas();
+  }, [toast]);
+
+  const handleTogglePin = async (id: string) => {
+    try {
+      setTogglingPin(id);
+      const updatedIdea = await toggleIdeaPin(id);
+      
+      // Update the idea in the local state
+      setIdeas(prevIdeas => 
+        prevIdeas.map(idea => 
+          idea.id === id ? updatedIdea : idea
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: `Idea ${updatedIdea.is_pinned ? 'pinned' : 'unpinned'} successfully`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to toggle pin status",
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingPin(null);
+    }
   };
 
-  const togglePin = (id: string) => {
-    setPosts(posts.map(post => 
-      post.id === id ? { ...post, isPinned: !post.isPinned } : post
-    ));
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  const sortedPosts = [...posts].sort((a, b) => {
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
-    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-  });
+  const getAuthorInitials = (email: string) => {
+    return email.split('@')[0].substring(0, 2).toUpperCase();
+  };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2 text-gray-600">Loading ideas...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600 mb-4">{error}</p>
+        <Button onClick={() => window.location.reload()}>
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Content Wall Section */}
       <div>
-
         <div className="grid gap-6">
-          {sortedPosts.map((post) => (
-            <Card key={post.id} className="relative">
-              {post.isPinned && (
-                <div className="absolute top-4 right-4">
-                  <Pin className="h-4 w-4 text-yellow-600" />
-                </div>
-              )}
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
-                        {post.author.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <CardTitle className="text-lg">{post.title}</CardTitle>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm text-gray-600">{post.author}</span>
-                        <span className="text-xs text-gray-400">•</span>
-                        <span className="text-xs text-gray-400">{post.timestamp}</span>
-                        <Badge variant={post.type === 'announcement' ? 'default' : 'secondary'}>
-                          {post.type}
-                        </Badge>
+          {ideas.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">No refined ideas yet</p>
+              <p className="text-gray-400 text-sm mt-2">
+                Ideas submitted through the idea chat will appear here
+              </p>
+            </div>
+          ) : (
+            ideas.map((idea) => (
+              <Card key={idea.id} className="relative">
+                {idea.is_pinned && (
+                  <div className="absolute top-4 right-4">
+                    <Pin className="h-4 w-4 text-yellow-600 fill-current" />
+                  </div>
+                )}
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
+                          {getAuthorInitials(idea.user_email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-lg">{idea.title}</CardTitle>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-sm text-gray-600">{idea.user_email}</span>
+                          <span className="text-xs text-gray-400">•</span>
+                          <span className="text-xs text-gray-400">{formatDate(idea.created_at)}</span>
+                          <Badge variant="secondary">
+                            {idea.status}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleTogglePin(idea.id)}
+                      disabled={togglingPin === idea.id}
+                      className="text-gray-400 hover:text-yellow-600"
+                    >
+                      {togglingPin === idea.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Pin className={`h-4 w-4 ${idea.is_pinned ? 'text-yellow-600 fill-current' : ''}`} />
+                      )}
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => togglePin(post.id)}
-                    className="text-gray-400 hover:text-yellow-600"
-                  >
-                    <Pin className={`h-4 w-4 ${post.isPinned ? 'text-yellow-600' : ''}`} />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 leading-relaxed">{post.content}</p>
-              </CardContent>
-            </Card>
-          ))}
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{idea.description}</p>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </div>
     </div>

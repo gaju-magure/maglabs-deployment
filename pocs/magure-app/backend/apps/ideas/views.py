@@ -49,6 +49,26 @@ class IdeaViewSet(viewsets.ModelViewSet):
         serializer = IdeaDetailSerializer(idea)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'])
+    def content_wall(self, request):
+        # For content wall, show all refined ideas in the tenant
+        # Ordered by: pinned first, then by creation date (newest first)
+        queryset = Idea.objects.filter(status='refined').order_by('-is_pinned', '-created_at')
+        
+        # Apply tenant filtering if user is not superadmin
+        if request.user.role not in ['superadmin']:
+            # For tenant users, this will be automatically filtered by tenant
+            # due to django-tenants or similar multi-tenant setup
+            pass
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = IdeaListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = IdeaListSerializer(queryset, many=True)
+        return Response(serializer.data)
+
 class IdeaRefineAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

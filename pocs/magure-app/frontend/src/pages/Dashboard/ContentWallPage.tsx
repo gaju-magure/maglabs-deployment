@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pin, Loader2 } from 'lucide-react';
 import { getContentWallIdeas, toggleIdeaPin, type Idea } from '@/services/ideasApi';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const ContentWallPage: React.FC = () => {
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -13,6 +14,10 @@ export const ContentWallPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [togglingPin, setTogglingPin] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Check if user is admin (can pin/unpin ideas)
+  const isAdmin = user?.role === 'superadmin' || user?.role === 'tenant_admin';
 
   // Load content wall ideas on mount
   useEffect(() => {
@@ -138,19 +143,21 @@ export const ContentWallPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleTogglePin(idea.id)}
-                      disabled={togglingPin === idea.id}
-                      className="text-gray-400 hover:text-yellow-600"
-                    >
-                      {togglingPin === idea.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Pin className={`h-4 w-4 ${idea.is_pinned ? 'text-yellow-600 fill-current' : ''}`} />
-                      )}
-                    </Button>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleTogglePin(idea.id)}
+                        disabled={togglingPin === idea.id}
+                        className="text-gray-400 hover:text-yellow-600"
+                      >
+                        {togglingPin === idea.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Pin className={`h-4 w-4 ${idea.is_pinned ? 'text-yellow-600 fill-current' : ''}`} />
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>

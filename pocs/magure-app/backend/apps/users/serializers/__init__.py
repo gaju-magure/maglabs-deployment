@@ -6,3 +6,10 @@ from .users import (
     UserUpdateSerializer,
 )
 from .tenant_user import TenantUserCreateSerializer
+from .profiles import (
+    UserProfileSerializer,
+    UserProfileUpdateSerializer,
+    UserProfileAvatarSerializer,
+    DepartmentSerializer,
+    RoleSerializer,
+)

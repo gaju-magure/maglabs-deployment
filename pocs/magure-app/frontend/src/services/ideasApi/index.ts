@@ -26,7 +26,7 @@ function getAuthHeaders(): HeadersInit {
 }
 
 export async function listIdeas(): Promise<Idea[]> {
-  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -37,7 +37,7 @@ export async function listIdeas(): Promise<Idea[]> {
 }
 
 export async function createIdea(data: CreateIdeaRequest): Promise<Idea> {
-  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -49,7 +49,7 @@ export async function createIdea(data: CreateIdeaRequest): Promise<Idea> {
 }
 
 export async function updateIdea(id: string, data: Partial<CreateIdeaRequest>): Promise<Idea> {
-  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/${id}/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/${id}/`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -61,7 +61,7 @@ export async function updateIdea(id: string, data: Partial<CreateIdeaRequest>): 
 }
 
 export async function deleteIdea(id: string): Promise<void> {
-  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/${id}/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/${id}/`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
@@ -96,7 +96,7 @@ export async function submitIdea(title: string, description: string): Promise<Id
 }
 
 export async function getContentWallIdeas(): Promise<Idea[]> {
-  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/content_wall/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/content_wall/`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -107,7 +107,7 @@ export async function getContentWallIdeas(): Promise<Idea[]> {
 }
 
 export async function toggleIdeaPin(id: string): Promise<Idea> {
-  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/${id}/toggle_pin/`, {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/${id}/toggle_pin/`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });

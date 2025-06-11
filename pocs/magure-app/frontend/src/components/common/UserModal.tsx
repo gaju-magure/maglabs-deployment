@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -60,34 +60,75 @@ export const UserModal: React.FC<UserModalProps> = ({
   const showProfileFields = currentUser?.role === UserRole.TenantAdmin;
   
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
+    username: initialData?.username || '',
+    email: initialData?.email || '',
     password: '',
-    first_name: '',
-    last_name: '',
-    role: '',
-    job_title: '',
-    phone_number: '',
-    department_id: undefined as number | undefined,
-    custom_role_id: undefined as number | undefined,
+    first_name: initialData?.first_name || '',
+    last_name: initialData?.last_name || '',
+    role: initialData?.role || '',
+    job_title: initialData?.job_title || '',
+    phone_number: initialData?.phone_number || '',
+    department_id: initialData?.department_id || undefined,
+    custom_role_id: initialData?.custom_role_id || undefined,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Update form data when initialData changes (for edit mode)
+  useEffect(() => {
+    if (mode === 'edit' && initialData) {
+      setFormData({
+        username: initialData.username || '',
+        email: initialData.email || '',
+        password: '',
+        first_name: initialData.first_name || '',
+        last_name: initialData.last_name || '',
+        role: initialData.role || '',
+        job_title: initialData.job_title || '',
+        phone_number: initialData.phone_number || '',
+        department_id: initialData.department_id || undefined,
+        custom_role_id: initialData.custom_role_id || undefined,
+      });
+    } else if (mode === 'create') {
+      setFormData({
+        username: '',
+        email: '',
+        password: '',
+        first_name: '',
+        last_name: '',
+        role: '',
+        job_title: '',
+        phone_number: '',
+        department_id: undefined,
+        custom_role_id: undefined,
+      });
+    }
+  }, [mode, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
       // Only include profile fields if user is tenant admin
-      const submitData = showProfileFields 
-        ? formData 
-        : {
-            username: formData.username,
-            email: formData.email,
-            password: formData.password,
-            first_name: formData.first_name,
-            last_name: formData.last_name,
-            role: formData.role,
-          };
+      let submitData;
+      
+      if (showProfileFields) {
+        submitData = mode === 'edit' && !formData.password 
+          ? { ...formData, password: undefined }
+          : formData;
+      } else {
+        submitData = {
+          username: formData.username,
+          email: formData.email,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          role: formData.role,
+        };
+        
+        // Only include password for create mode or when password is provided in edit mode
+        if (mode === 'create' || formData.password) {
+          submitData.password = formData.password;
+        }
+      }
       
       await onSubmit(submitData);
       setFormData({
@@ -179,14 +220,16 @@ export const UserModal: React.FC<UserModalProps> = ({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="password" style={{ fontFamily: 'Satoshi, sans-serif' }}>Password</Label>
+            <Label htmlFor="password" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+              Password {mode === 'edit' && <span className="text-gray-400">(leave empty to keep current)</span>}
+            </Label>
             <Input
               id="password"
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="••••••••"
-              required
+              placeholder={mode === 'edit' ? 'Enter new password' : '••••••••'}
+              required={mode === 'create'}
               className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
               style={{ fontFamily: 'Satoshi, sans-serif' }}
             />

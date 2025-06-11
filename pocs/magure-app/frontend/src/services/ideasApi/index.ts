@@ -8,10 +8,6 @@ export interface Idea {
   created_at: string;
   updated_at: string;
   user_email: string;
-  clarity_score?: number;
-  creativity_score?: number;
-  feasibility_score?: number;
-  relevance_score?: number;
 }
 
 export interface CreateIdeaRequest {
@@ -86,20 +82,14 @@ export async function refineIdea(idea_text: string, conversation_history?: any[]
   return data.refined_idea;
 }
 
-export async function scoreIdea(idea_text: string): Promise<{
-  clarity: number;
-  creativity: number;
-  feasibility: number;
-  relevance: number;
-}> {
-  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/score/`, {
+export async function submitIdea(title: string, description: string): Promise<Idea> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/submit/`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ idea_text }),
+    body: JSON.stringify({ title, description }),
   });
   if (!response.ok) {
-    throw new Error('Failed to score idea');
+    throw new Error('Failed to submit idea');
   }
-  const data = await response.json();
-  return data.scores;
+  return response.json();
 }

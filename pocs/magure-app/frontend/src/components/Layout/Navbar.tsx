@@ -39,6 +39,7 @@ export const Navbar: React.FC = () => {
         return [
           { to: '/dashboard/content', label: 'Content Wall' },
           { to: '/dashboard/users', label: 'User Management' },
+          { to: '/dashboard/organization', label: 'Organization' },
           { to: '/dashboard/ideas', label: 'Idea Submission' },
         ];
       case UserRole.TenantUser:

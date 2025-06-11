@@ -21,13 +21,21 @@ interface CreateUserModalProps {
     first_name: string;
     last_name: string;
     role: string;
+    job_title?: string;
+    phone_number?: string;
+    department_id?: number;
+    custom_role_id?: number;
   }) => void;
+  departments?: Array<{ id: number; name: string }>;
+  customRoles?: Array<{ id: number; name: string }>;
 }
 
 export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  departments = [],
+  customRoles = [],
 }) => {
   const [formData, setFormData] = useState({
     username: '',
@@ -36,6 +44,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     first_name: '',
     last_name: '',
     role: '',
+    job_title: '',
+    phone_number: '',
+    department_id: undefined as number | undefined,
+    custom_role_id: undefined as number | undefined,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -51,6 +63,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
         first_name: '',
         last_name: '',
         role: '',
+        job_title: '',
+        phone_number: '',
+        department_id: undefined,
+        custom_role_id: undefined,
       });
     } finally {
       setIsSubmitting(false);
@@ -151,6 +167,75 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
               </SelectContent>
             </Select>
           </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="job_title" style={{ fontFamily: 'Satoshi, sans-serif' }}>Job Title</Label>
+            <Input
+              id="job_title"
+              value={formData.job_title}
+              onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+              placeholder="Software Engineer"
+              className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
+              style={{ fontFamily: 'Satoshi, sans-serif' }}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="phone_number" style={{ fontFamily: 'Satoshi, sans-serif' }}>Phone Number</Label>
+            <Input
+              id="phone_number"
+              value={formData.phone_number}
+              onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+              placeholder="+1 (555) 123-4567"
+              className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
+              style={{ fontFamily: 'Satoshi, sans-serif' }}
+            />
+          </div>
+          
+          {departments.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="department" style={{ fontFamily: 'Satoshi, sans-serif' }}>Department</Label>
+              <Select 
+                value={formData.department_id?.toString() || ''} 
+                onValueChange={(value) => setFormData({ ...formData, department_id: value ? parseInt(value) : undefined })}
+              >
+                <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Department</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          {customRoles.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="custom_role" style={{ fontFamily: 'Satoshi, sans-serif' }}>Custom Role</Label>
+              <Select 
+                value={formData.custom_role_id?.toString() || ''} 
+                onValueChange={(value) => setFormData({ ...formData, custom_role_id: value ? parseInt(value) : undefined })}
+              >
+                <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  <SelectValue placeholder="Select custom role" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Custom Role</SelectItem>
+                  {customRoles.map((role) => (
+                    <SelectItem key={role.id} value={role.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
           <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
             <Button 
               type="button" 

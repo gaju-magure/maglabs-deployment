@@ -1,11 +1,16 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
+from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth import get_user_model
 from apps.users.serializers import (
     UserListSerializer,
     UserDetailSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
+    UserProfileSerializer,
+    UserProfileUpdateSerializer,
+    UserProfileAvatarSerializer,
 )
 from rest_framework.permissions import IsAuthenticated, OR
 from .permissions import IsSuperAdmin, IsTenantAdmin, IsTenantUser
@@ -62,3 +67,65 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
+    
+    @action(detail=True, methods=['get', 'put', 'patch'], url_path='profile')
+    def profile(self, request, pk=None):
+        """Get or update user profile"""
+        user = self.get_object()
+        
+        if request.method == 'GET':
+            serializer = UserProfileSerializer(user.profile)
+            return Response(serializer.data)
+        
+        else:  # PUT or PATCH
+            # Check permissions - users can only update their own profile
+            if request.user.role not in ['superadmin', 'tenant_admin'] and user.id != request.user.id:
+                return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+            
+            serializer = UserProfileUpdateSerializer(
+                user.profile, 
+                data=request.data, 
+                partial=(request.method == 'PATCH')
+            )
+            if serializer.is_valid():
+                serializer.save()
+                return Response(UserProfileSerializer(user.profile).data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(
+        detail=True, 
+        methods=['post'], 
+        url_path='profile/avatar',
+        parser_classes=[MultiPartParser, FormParser]
+    )
+    def upload_avatar(self, request, pk=None):
+        """Upload profile avatar"""
+        user = self.get_object()
+        
+        # Check permissions
+        if request.user.role not in ['superadmin', 'tenant_admin'] and user.id != request.user.id:
+            return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = UserProfileAvatarSerializer(user.profile, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'message': 'Avatar uploaded successfully',
+                'avatar_url': user.profile.profile_avatar.url if user.profile.profile_avatar else None
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['delete'], url_path='profile/avatar')
+    def delete_avatar(self, request, pk=None):
+        """Delete profile avatar"""
+        user = self.get_object()
+        
+        # Check permissions
+        if request.user.role not in ['superadmin', 'tenant_admin'] and user.id != request.user.id:
+            return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if user.profile.profile_avatar:
+            user.profile.profile_avatar.delete(save=True)
+            return Response({'message': 'Avatar deleted successfully'})
+        
+        return Response({'message': 'No avatar to delete'}, status=status.HTTP_400_BAD_REQUEST)

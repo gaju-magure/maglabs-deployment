@@ -8,6 +8,7 @@ export interface Idea {
   created_at: string;
   updated_at: string;
   user_email: string;
+  is_pinned: boolean;
 }
 
 export interface CreateIdeaRequest {
@@ -90,6 +91,28 @@ export async function submitIdea(title: string, description: string): Promise<Id
   });
   if (!response.ok) {
     throw new Error('Failed to submit idea');
+  }
+  return response.json();
+}
+
+export async function getContentWallIdeas(): Promise<Idea[]> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/content_wall/`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch content wall ideas');
+  }
+  return response.json();
+}
+
+export async function toggleIdeaPin(id: string): Promise<Idea> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/${id}/toggle_pin/`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to toggle idea pin');
   }
   return response.json();
 }

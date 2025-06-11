@@ -113,10 +113,16 @@ class TenantInfoSerializer(serializers.ModelSerializer):
     def get_onboarding_progress(self, obj):
         try:
             progress = obj.onboarding_progress
+            # Ensure completion percentage reflects final state for completed onboarding
+            if obj.onboarding_status == Tenant.OnboardingStatus.COMPLETED:
+                completion_percentage = 100
+            else:
+                completion_percentage = progress.get_effective_completion_percentage()
+            
             return {
-                'completion_percentage': progress.completion_percentage,
+                'completion_percentage': completion_percentage,
                 'completed_steps': len(progress.completed_steps),
-                'total_steps': progress.total_steps,
+                'total_steps': progress.get_effective_total_steps(),
                 'current_step': progress.current_step
             }
         except OnboardingProgress.DoesNotExist:

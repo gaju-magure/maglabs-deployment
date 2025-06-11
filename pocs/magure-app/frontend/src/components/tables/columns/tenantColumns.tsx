@@ -62,7 +62,7 @@ export const tenantColumns: DataTableColumn<TenantData>[] = [
       const status = tenant.onboarding_status || 'pending';
       const progress = tenant.onboarding_progress;
 
-      if (status === 'completed') {
+      if (status === 'completed' || (progress && progress.completion_percentage >= 100)) {
         return (
           <div className="inline-flex items-center gap-2 text-green-600 dark:text-green-400">
             <CheckCircle2 className="w-4 h-4" />

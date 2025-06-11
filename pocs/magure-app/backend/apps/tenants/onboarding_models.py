@@ -330,12 +330,14 @@ class OnboardingProgress(models.Model):
         if step_data:
             self.step_data[step_name] = step_data
         
-        # Update completion percentage
-        self.completion_percentage = (len(self.completed_steps) / self.total_steps) * 100
+        # Update completion percentage based on effective total steps (excluding COMPLETE)
+        effective_total = self.get_effective_total_steps()
+        completed_count = len([step for step in self.completed_steps if step != 'COMPLETE'])
+        self.completion_percentage = min(100, (completed_count / effective_total) * 100)
         
         # Set current step to next incomplete step
         for step_code, step_name_display in self.STEPS:
-            if step_code not in self.completed_steps:
+            if step_code not in self.completed_steps and step_code != 'COMPLETE':
                 self.current_step = step_code
                 break
         else:
@@ -344,6 +346,10 @@ class OnboardingProgress(models.Model):
             if not self.completed_at:
                 from django.utils import timezone
                 self.completed_at = timezone.now()
+                # Update tenant status when onboarding is truly completed
+                self.tenant.onboarding_status = self.tenant.OnboardingStatus.COMPLETED
+                self.tenant.onboarding_completed_at = timezone.now()
+                self.tenant.save()
         
         self.save()
     

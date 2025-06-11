@@ -202,11 +202,15 @@ export function useOnboarding(initialToken?: string): UseOnboardingState & UseOn
 
       if (result.onboarding_completed) {
         toast.success('Onboarding completed successfully! Welcome to your new workspace!');
+        // Force a final status refresh to ensure UI shows completion
+        setTimeout(async () => {
+          await refreshStatus();
+        }, 500);
       } else {
         toast.success('Preferences saved successfully!');
+        await refreshStatus();
       }
 
-      await refreshStatus();
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to save preferences';

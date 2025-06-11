@@ -69,6 +69,19 @@ export const useTenantManagement = () => {
     fetchTenants();
   }, []);
 
+  // Auto-refresh for tenants with in-progress onboarding
+  useEffect(() => {
+    const inProgressTenants = tenants.filter(t => t.onboarding_status === 'in_progress');
+    
+    if (inProgressTenants.length > 0) {
+      const refreshInterval = setInterval(() => {
+        fetchTenants(true);
+      }, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(refreshInterval);
+    }
+  }, [tenants]);
+
   // Handle tenant form submission (create or edit)
   const handleTenantSubmit = async (formData: TenantFormData) => {
     if (editingTenant) {

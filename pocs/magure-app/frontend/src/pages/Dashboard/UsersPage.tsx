@@ -2,7 +2,7 @@ import React from 'react';
 import { AlertBanner } from '@/components/ui/alert-banner';
 import { PresetDataTable, userTablePreset } from '@/components/tables';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { CreateUserModal } from '@/components/common/CreateUserModal';
+import { UserModal } from '@/components/common/UserModal';
 import { useUserManagement } from '@/hooks/useUserManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/enums/userRole';
@@ -21,14 +21,18 @@ export const UsersPage: React.FC = () => {
 
     // Modal states
     isCreateModalOpen,
+    isEditModalOpen,
+    editingUser,
     deletingUser,
 
     // Actions
     setSearchQuery,
     fetchUsers,
     handleCreateUser,
+    handleUpdateUser,
     openCreateModal,
     closeCreateModal,
+    closeEditModal,
     confirmDeleteUser,
     createActionHandlers,
     retryFetch,
@@ -95,10 +99,20 @@ export const UsersPage: React.FC = () => {
       />
 
       {/* Create User Modal */}
-      <CreateUserModal
+      <UserModal
         isOpen={isCreateModalOpen}
         onClose={closeCreateModal}
+        mode="create"
         onSubmit={handleCreateUser}
+      />
+
+      {/* Edit User Modal */}
+      <UserModal
+        isOpen={isEditModalOpen}
+        onClose={closeEditModal}
+        mode="edit"
+        initialData={editingUser}
+        onSubmit={handleUpdateUser}
       />
 
       {/* Delete Confirmation Dialog */}

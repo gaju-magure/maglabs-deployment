@@ -79,6 +79,7 @@ export interface CreateSessionRequest {
   title?: string;
   conversation_type?: string;
   template_id?: string;
+  initial_message?: string;
 }
 
 export interface SendMessageRequest {

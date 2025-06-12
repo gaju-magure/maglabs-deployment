@@ -324,13 +324,15 @@ class ChatSessionCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating new chat sessions"""
     
     template_id = serializers.UUIDField(required=False, write_only=True)
+    initial_message = serializers.CharField(required=False, write_only=True)
     
     class Meta:
         model = ChatSession
-        fields = ['title', 'conversation_type', 'template_id']
+        fields = ['title', 'conversation_type', 'template_id', 'initial_message']
     
     def create(self, validated_data):
         template_id = validated_data.pop('template_id', None)
+        initial_message = validated_data.pop('initial_message', None)
         user = self.context['request'].user
         
         # Build context metadata
@@ -350,7 +352,7 @@ class ChatSessionCreateSerializer(serializers.ModelSerializer):
             **validated_data
         )
         
-        # If template provided, create initial message
+        # If template provided, create initial message from template
         if template_id:
             try:
                 template = ChatTemplate.objects.get(id=template_id, is_active=True)
@@ -370,6 +372,17 @@ class ChatSessionCreateSerializer(serializers.ModelSerializer):
                 session.save()
             except ChatTemplate.DoesNotExist:
                 pass
+        # If initial_message provided directly, create it
+        elif initial_message:
+            ChatMessage.objects.create(
+                session=session,
+                role='user',
+                content=initial_message,
+                message_type='text',
+                sequence_number=1
+            )
+            session.message_count = 1
+            session.save()
         
         return session
 

@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Pin, Loader2, Sparkles, Clock, User, Heart, Search, X } from 'lucide-react';
+import { Pin, Loader2, Sparkles, Clock, User, Heart, Search, X, Building2, Briefcase } from 'lucide-react';
 import { getContentWallIdeas, toggleIdeaPin, likeIdea, unlikeIdea, type Idea } from '@/services/ideasApi';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { IdeaDetailModal } from '@/components/common/IdeaDetailModal';
+import { AdminPinningSidebar } from '@/components/common/AdminPinningSidebar';
+import { DepartmentFilter } from '@/components/common/DepartmentFilter';
 
 export const ContentWallPage: React.FC = () => {
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -19,30 +21,112 @@ export const ContentWallPage: React.FC = () => {
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState<string | undefined>();
+  const [selectedRole, setSelectedRole] = useState<string | undefined>();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
   // Check if user is admin (can pin/unpin ideas)
   const isAdmin = user?.role === 'superadmin' || user?.role === 'tenant_admin';
 
-  // Filter ideas based on search query
+  // Filter ideas based on search query, department, and role
   const filteredIdeas = ideas.filter(idea => {
-    if (!searchQuery.trim()) return true;
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = (
+        idea.title.toLowerCase().includes(query) ||
+        idea.description.toLowerCase().includes(query) ||
+        idea.user_email.toLowerCase().includes(query) ||
+        idea.user_name?.toLowerCase().includes(query) ||
+        idea.department_name?.toLowerCase().includes(query) ||
+        idea.custom_role_name?.toLowerCase().includes(query)
+      );
+      if (!matchesSearch) return false;
+    }
     
-    const query = searchQuery.toLowerCase();
-    return (
-      idea.title.toLowerCase().includes(query) ||
-      idea.description.toLowerCase().includes(query) ||
-      idea.user_email.toLowerCase().includes(query)
-    );
+    // Department filter
+    if (selectedDepartment) {
+      if (!idea.department_name || idea.department_name !== getDepartmentName(selectedDepartment)) {
+        return false;
+      }
+    }
+    
+    // Role filter
+    if (selectedRole) {
+      if (!idea.custom_role_name || idea.custom_role_name !== getRoleName(selectedRole)) {
+        return false;
+      }
+    }
+    
+    return true;
   });
 
-  // Load content wall ideas on mount
+  // Helper functions
+  const getDepartmentName = (id: string) => {
+    const departments = getDepartmentStats();
+    return departments.find(d => d.id === id)?.name;
+  };
+
+  const getRoleName = (id: string) => {
+    const roles = getRoleStats();
+    return roles.find(r => r.id === id)?.name;
+  };
+
+  // Calculate department statistics
+  const getDepartmentStats = () => {
+    const departmentCounts: { [key: string]: number } = {};
+    const departmentNames: { [key: string]: string } = {};
+    
+    ideas.forEach(idea => {
+      if (idea.department_name) {
+        const key = idea.department_name;
+        departmentCounts[key] = (departmentCounts[key] || 0) + 1;
+        departmentNames[key] = idea.department_name;
+      }
+    });
+    
+    return Object.entries(departmentCounts).map(([name, count]) => ({
+      id: name,
+      name,
+      count
+    }));
+  };
+
+  // Calculate role statistics
+  const getRoleStats = () => {
+    const roleCounts: { [key: string]: number } = {};
+    const roleNames: { [key: string]: string } = {};
+    
+    ideas.forEach(idea => {
+      if (idea.custom_role_name) {
+        const key = idea.custom_role_name;
+        roleCounts[key] = (roleCounts[key] || 0) + 1;
+        roleNames[key] = idea.custom_role_name;
+      }
+    });
+    
+    return Object.entries(roleCounts).map(([name, count]) => ({
+      id: name,
+      name,
+      count
+    }));
+  };
+
+  // Load content wall ideas on mount and when filters change
   useEffect(() => {
     const loadIdeas = async () => {
       try {
         setLoading(true);
-        const data = await getContentWallIdeas();
+        
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (selectedDepartment) params.append('department', selectedDepartment);
+        if (selectedRole) params.append('role', selectedRole);
+        if (searchQuery.trim()) params.append('search', searchQuery.trim());
+        
+        const data = await getContentWallIdeas(params.toString());
         setIdeas(data);
         setError(null);
       } catch (err) {
@@ -57,8 +141,10 @@ export const ContentWallPage: React.FC = () => {
       }
     };
 
-    loadIdeas();
-  }, [toast]);
+    const debounceTimer = setTimeout(loadIdeas, 300);
+    
+    return () => clearTimeout(debounceTimer);
+  }, [toast, selectedDepartment, selectedRole, searchQuery]);
 
   const handleTogglePin = async (id: string) => {
     try {
@@ -209,10 +295,12 @@ export const ContentWallPage: React.FC = () => {
   }
 
   return (
-    <div className="w-full min-h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+    <div className="w-full min-h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex">
+      {/* Main Content */}
+      <div className={`flex-1 transition-all duration-300 ${isAdmin && sidebarOpen ? 'mr-96' : ''}`}>
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
           {/* Mobile Layout */}
           <div className="flex flex-col gap-4 sm:hidden animate-in fade-in duration-500">
             <div className="flex items-center gap-3">
@@ -296,11 +384,23 @@ export const ContentWallPage: React.FC = () => {
               )}
             </div>
           </div>
+          </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Filters */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+          <DepartmentFilter
+            departments={getDepartmentStats()}
+            roles={getRoleStats()}
+            selectedDepartment={selectedDepartment}
+            selectedRole={selectedRole}
+            onDepartmentChange={setSelectedDepartment}
+            onRoleChange={setSelectedRole}
+          />
+        </div>
+
+        {/* Content */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {ideas.length === 0 ? (
           <div className="text-center py-16 animate-in slide-in-from-bottom duration-500">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full mb-6 bg-gradient-to-br from-[#FDA052] via-[#B96AF7] via-[#3077F3] to-[#41E6F8] p-[2px]">
@@ -370,6 +470,12 @@ export const ContentWallPage: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4 flex-1">
                       <Avatar className="w-12 h-12 ring-2 ring-gray-200 dark:ring-gray-700">
+                        {idea.user_profile?.profile_avatar ? (
+                          <AvatarImage 
+                            src={idea.user_profile.profile_avatar} 
+                            alt={idea.user_name || idea.user_email}
+                          />
+                        ) : null}
                         <AvatarFallback className="bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 text-blue-700 dark:text-blue-300 text-sm font-semibold">
                           {getAuthorInitials(idea.user_email)}
                         </AvatarFallback>
@@ -378,11 +484,40 @@ export const ContentWallPage: React.FC = () => {
                         <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
                           {idea.title}
                         </CardTitle>
+                        
+                        {/* Author and Job Title */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {idea.user_name || idea.user_email.split('@')[0]}
+                          </span>
+                          {idea.user_profile?.job_title && (
+                            <>
+                              <span className="text-gray-400">•</span>
+                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                                {idea.user_profile.job_title}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        
+                        {/* Department and Role Badges */}
+                        <div className="flex items-center gap-2 mb-3">
+                          {idea.department_name && (
+                            <Badge variant="outline" className="text-xs">
+                              <Building2 className="w-3 h-3 mr-1" />
+                              {idea.department_name}
+                            </Badge>
+                          )}
+                          {idea.custom_role_name && (
+                            <Badge variant="outline" className="text-xs">
+                              <Briefcase className="w-3 h-3 mr-1" />
+                              {idea.custom_role_name}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Meta Information */}
                         <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-                          <div className="flex items-center gap-1.5">
-                            <User className="w-4 h-4" />
-                            <span className="font-medium">{idea.user_email.split('@')[0]}</span>
-                          </div>
                           <div className="flex items-center gap-1.5">
                             <Clock className="w-4 h-4" />
                             <span>{getRelativeTime(idea.created_at)}</span>
@@ -456,7 +591,23 @@ export const ContentWallPage: React.FC = () => {
             ))}
           </div>
         )}
+        </div>
       </div>
+
+      {/* Admin Sidebar */}
+      {isAdmin && (
+        <AdminPinningSidebar
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+          onIdeaUpdate={(updatedIdea) => {
+            setIdeas(prevIdeas => 
+              prevIdeas.map(idea => 
+                idea.id === updatedIdea.id ? updatedIdea : idea
+              )
+            );
+          }}
+        />
+      )}
 
       {/* Idea Detail Modal */}
       <IdeaDetailModal

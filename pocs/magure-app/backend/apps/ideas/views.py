@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.db import models
 from .models import Idea, IdeaLike
 from .serializers import (
     IdeaListSerializer,
@@ -54,6 +55,30 @@ class IdeaViewSet(viewsets.ModelViewSet):
         # For content wall, show all refined ideas in the tenant
         # Ordered by: pinned first, then by creation date (newest first)
         queryset = Idea.objects.filter(status='refined').order_by('-is_pinned', '-created_at')
+        
+        # Apply department filtering if specified
+        department_id = request.query_params.get('department')
+        if department_id and department_id != 'all':
+            try:
+                queryset = queryset.filter(department_id=department_id)
+            except ValueError:
+                pass  # Invalid department_id, ignore filter
+        
+        # Apply role filtering if specified
+        role_id = request.query_params.get('role')
+        if role_id and role_id != 'all':
+            try:
+                queryset = queryset.filter(custom_role_id=role_id)
+            except ValueError:
+                pass  # Invalid role_id, ignore filter
+        
+        # Apply search filtering if specified
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                models.Q(title__icontains=search) | 
+                models.Q(description__icontains=search)
+            )
         
         # Apply tenant filtering if user is not superadmin
         if request.user.role not in ['superadmin']:
@@ -134,7 +159,9 @@ class IdeaSubmitAPIView(APIView):
             user=request.user,
             title=title,
             description=description,
-            status='refined'
+            status='refined',
+            department=request.user.department,
+            custom_role=request.user.custom_role
         )
         
         # Serialize and return the created idea

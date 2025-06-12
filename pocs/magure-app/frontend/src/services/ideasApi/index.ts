@@ -8,6 +8,14 @@ export interface Idea {
   created_at: string;
   updated_at: string;
   user_email: string;
+  user_name?: string;
+  user_profile?: {
+    job_title?: string;
+    bio?: string;
+    profile_avatar?: string;
+  };
+  department_name?: string;
+  custom_role_name?: string;
   is_pinned: boolean;
   like_count: number;
   is_liked: boolean;
@@ -97,8 +105,12 @@ export async function submitIdea(title: string, description: string): Promise<Id
   return response.json();
 }
 
-export async function getContentWallIdeas(): Promise<Idea[]> {
-  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/content_wall/`, {
+export async function getContentWallIdeas(queryParams?: string): Promise<Idea[]> {
+  const url = queryParams 
+    ? `${getBaseUrl()}/api/v1/ideas/ideas/content_wall/?${queryParams}`
+    : `${getBaseUrl()}/api/v1/ideas/ideas/content_wall/`;
+    
+  const response = await fetch(url, {
     method: 'GET',
     headers: getAuthHeaders(),
   });

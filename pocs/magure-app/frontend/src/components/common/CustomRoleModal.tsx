@@ -75,7 +75,7 @@ export const CustomRoleModal: React.FC<CustomRoleModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="sm:max-w-xl rounded-2xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#3077F3] to-[#41E6F8] flex items-center justify-center">

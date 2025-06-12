@@ -114,7 +114,7 @@ export const DepartmentModal: React.FC<DepartmentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="sm:max-w-xl rounded-2xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#B96AF7] to-[#FDA052] flex items-center justify-center">

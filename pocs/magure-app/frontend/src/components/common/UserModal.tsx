@@ -157,7 +157,7 @@ export const UserModal: React.FC<UserModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#FDA052] to-[#B96AF7] flex items-center justify-center">
@@ -276,6 +276,52 @@ export const UserModal: React.FC<UserModalProps> = ({
             </div>
           )}
           
+          {/* Department selection - shown for tenant admins */}
+          {currentUser?.role === UserRole.TenantAdmin && departments.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="department" style={{ fontFamily: 'Satoshi, sans-serif' }}>Department</Label>
+              <Select 
+                value={formData.department_id?.toString() || ''} 
+                onValueChange={(value) => setFormData({ ...formData, department_id: value ? parseInt(value) : undefined })}
+              >
+                <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Department</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          {/* Custom Role selection - shown for tenant admins */}
+          {currentUser?.role === UserRole.TenantAdmin && customRoles.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="custom_role" style={{ fontFamily: 'Satoshi, sans-serif' }}>Custom Role</Label>
+              <Select 
+                value={formData.custom_role_id?.toString() || ''} 
+                onValueChange={(value) => setFormData({ ...formData, custom_role_id: value ? parseInt(value) : undefined })}
+              >
+                <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  <SelectValue placeholder="Select custom role" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Custom Role</SelectItem>
+                  {customRoles.map((role) => (
+                    <SelectItem key={role.id} value={role.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
           {showProfileFields && (
             <>
               <div className="space-y-2">
@@ -302,49 +348,6 @@ export const UserModal: React.FC<UserModalProps> = ({
                 />
               </div>
               
-              {departments.length > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="department" style={{ fontFamily: 'Satoshi, sans-serif' }}>Department</Label>
-                  <Select 
-                    value={formData.department_id?.toString() || ''} 
-                    onValueChange={(value) => setFormData({ ...formData, department_id: value ? parseInt(value) : undefined })}
-                  >
-                    <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Department</SelectItem>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              {customRoles.length > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="custom_role" style={{ fontFamily: 'Satoshi, sans-serif' }}>Custom Role</Label>
-                  <Select 
-                    value={formData.custom_role_id?.toString() || ''} 
-                    onValueChange={(value) => setFormData({ ...formData, custom_role_id: value ? parseInt(value) : undefined })}
-                  >
-                    <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                      <SelectValue placeholder="Select custom role" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Custom Role</SelectItem>
-                      {customRoles.map((role) => (
-                        <SelectItem key={role.id} value={role.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
             </>
           )}
           </div>

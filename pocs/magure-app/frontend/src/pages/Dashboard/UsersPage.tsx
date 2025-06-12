@@ -69,11 +69,11 @@ export const UsersPage: React.FC = () => {
           getCustomRoles()
         ]);
 
-        setDepartments(deptResponse.results?.map(dept => ({ 
+        setDepartments(deptResponse.map(dept => ({ 
           id: dept.id, 
           name: dept.name 
         })) || []);
-        setCustomRoles(roleResponse.results?.map(role => ({ 
+        setCustomRoles(roleResponse.map(role => ({ 
           id: role.id, 
           name: role.name 
         })) || []);

@@ -4,11 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Pin, Loader2, Sparkles, Clock, User, Heart, Search, X, Building2, Briefcase, Filter } from 'lucide-react';
-import { getContentWallIdeas, toggleIdeaPin, likeIdea, unlikeIdea, type Idea } from '@/services/ideasApi';
+import { Pin, Loader2, Sparkles, Clock, User, Heart, Search, X, Building2, Briefcase, Filter, BarChart3 } from 'lucide-react';
+import { getContentWallIdeas, toggleIdeaPin, likeIdea, unlikeIdea, getIdeaAnalytics, type Idea, type IdeaAnalytics } from '@/services/ideasApi';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { IdeaDetailModal } from '@/components/common/IdeaDetailModal';
+import { StatusBadge, PriorityBadge } from '@/components/common/StatusBadge';
 import { 
   Select,
   SelectContent,
@@ -39,6 +40,8 @@ export const ContentWallPage: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<string | undefined>();
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
   const [selectedPriority, setSelectedPriority] = useState<string | undefined>();
+  const [analytics, setAnalytics] = useState<IdeaAnalytics | null>(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -157,6 +160,17 @@ export const ContentWallPage: React.FC = () => {
     return true;
   });
 
+  // Load analytics for admins
+  const loadAnalytics = async () => {
+    if (!isAdmin) return;
+    try {
+      const data = await getIdeaAnalytics();
+      setAnalytics(data);
+    } catch (error) {
+      console.error('Failed to load analytics:', error);
+    }
+  };
+
   // Load content wall ideas on mount and when filters change
   useEffect(() => {
     const loadIdeas = async () => {
@@ -191,7 +205,14 @@ export const ContentWallPage: React.FC = () => {
     const debounceTimer = setTimeout(loadIdeas, 300);
     
     return () => clearTimeout(debounceTimer);
-  }, [toast, selectedDepartment, selectedRole, selectedStatus, selectedPriority, searchQuery]);
+  }, [toast, selectedDepartment, selectedRole, selectedStatus, selectedPriority, searchQuery, isAdmin]);
+
+  // Load analytics on mount for admins
+  useEffect(() => {
+    if (isAdmin) {
+      loadAnalytics();
+    }
+  }, [isAdmin]);
 
   const handleTogglePin = async (id: string) => {
     try {
@@ -293,6 +314,11 @@ export const ContentWallPage: React.FC = () => {
     // Update the selected idea if it's the one being updated
     if (selectedIdea && selectedIdea.id === updatedIdea.id) {
       setSelectedIdea(updatedIdea);
+    }
+    
+    // Refresh analytics for admins
+    if (isAdmin) {
+      loadAnalytics();
     }
   };
 
@@ -420,8 +446,22 @@ export const ContentWallPage: React.FC = () => {
               </div>
             </div>
             
-            {/* Desktop Search Bar */}
-            <div className="relative w-full max-w-sm">
+            <div className="flex items-center gap-4">
+              {/* Analytics Button - Admin Only */}
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAnalytics(!showAnalytics)}
+                  className="flex items-center gap-2"
+                  style={{ fontFamily: 'Satoshi, sans-serif' }}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Analytics
+                </Button>
+              )}
+              
+              {/* Desktop Search Bar */}
+              <div className="relative w-full max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 type="text"
@@ -442,7 +482,8 @@ export const ContentWallPage: React.FC = () => {
                 </Button>
               )}
             </div>
-          </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -542,6 +583,67 @@ export const ContentWallPage: React.FC = () => {
           </div>
         )}
 
+        {/* Analytics Dashboard - Admin Only */}
+        {isAdmin && showAnalytics && analytics && (
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+            <Card className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  <BarChart3 className="h-5 w-5" />
+                  Ideas Analytics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold" style={{ fontFamily: 'Satoshi, sans-serif' }}>{analytics.total_ideas}</div>
+                    <div className="text-sm text-muted-foreground" style={{ fontFamily: 'Satoshi, sans-serif' }}>Total Ideas</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold" style={{ fontFamily: 'Satoshi, sans-serif' }}>{analytics.created_by_me}</div>
+                    <div className="text-sm text-muted-foreground" style={{ fontFamily: 'Satoshi, sans-serif' }}>Created by Me</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold" style={{ fontFamily: 'Satoshi, sans-serif' }}>{analytics.assigned_to_me}</div>
+                    <div className="text-sm text-muted-foreground" style={{ fontFamily: 'Satoshi, sans-serif' }}>Assigned to Me</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                      {analytics.by_status.approved || 0}
+                    </div>
+                    <div className="text-sm text-muted-foreground" style={{ fontFamily: 'Satoshi, sans-serif' }}>Approved</div>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-medium mb-2" style={{ fontFamily: 'Satoshi, sans-serif' }}>By Status</h4>
+                    <div className="space-y-2">
+                      {Object.entries(analytics.by_status).map(([status, count]) => (
+                        <div key={status} className="flex items-center justify-between">
+                          <StatusBadge status={status} />
+                          <span className="font-medium" style={{ fontFamily: 'Satoshi, sans-serif' }}>{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2" style={{ fontFamily: 'Satoshi, sans-serif' }}>By Priority</h4>
+                    <div className="space-y-2">
+                      {Object.entries(analytics.by_priority).map(([priority, count]) => (
+                        <div key={priority} className="flex items-center justify-between">
+                          <PriorityBadge priority={priority} />
+                          <span className="font-medium" style={{ fontFamily: 'Satoshi, sans-serif' }}>{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Content */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {ideas.length === 0 ? (
@@ -581,189 +683,394 @@ export const ContentWallPage: React.FC = () => {
             </Button>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div>
             {/* Search Results Count */}
             {searchQuery && (
-              <div className="text-sm text-gray-600 dark:text-gray-400 mb-4" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+              <div className="text-sm text-gray-600 dark:text-gray-400 mb-6" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                 Found {filteredIdeas.length} idea{filteredIdeas.length !== 1 ? 's' : ''} matching "{searchQuery}"
               </div>
             )}
             
-            {filteredIdeas.map((idea, index) => {
-              const stickyStyle = getStickyNoteStyle(idea, index);
-              return (
-                <Card 
-                  key={idea.id} 
-                  className={`relative overflow-hidden transition-all duration-300 animate-in slide-in-from-bottom cursor-pointer group border-2 ${
-                    stickyStyle.backgroundClass
-                  } ${
-                    stickyStyle.rotationClass
-                  } ${
-                    stickyStyle.shadowClass
-                  } hover:${stickyStyle.hoverShadow} hover:scale-105 hover:rotate-0 hover:z-10`}
-                  style={{ 
-                    animationDelay: `${index * 50}ms`,
-                    fontFamily: 'Satoshi, sans-serif',
-                    transformOrigin: 'center center',
-                  }}
-                  onClick={() => handleIdeaClick(idea)}
-                >
-                {idea.is_pinned && (
-                  <div className="absolute -top-2 -right-2 z-20">
-                    <div className="relative">
-                      {/* Pushpin shadow */}
-                      <div className="absolute top-1 left-1 w-6 h-6 bg-gray-800/20 rounded-full blur-sm"></div>
-                      {/* Pushpin body */}
-                      <div className="w-6 h-6 bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-full shadow-lg border-2 border-red-800 transform rotate-12">
-                        <div className="absolute inset-1 bg-gradient-to-br from-red-300 to-red-400 rounded-full"></div>
-                        {/* Pushpin needle */}
-                        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-0.5 h-3 bg-gray-600 shadow-sm"></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4 flex-1">
-                      <Avatar className="w-12 h-12 ring-2 ring-offset-2 ring-gray-100 dark:ring-gray-800 group-hover:ring-blue-200 dark:group-hover:ring-blue-800 transition-all duration-300">
-                        {idea.user_profile?.profile_avatar ? (
-                          <AvatarImage 
-                            src={idea.user_profile.profile_avatar} 
-                            alt={idea.user_name || idea.user_email}
-                          />
-                        ) : null}
-                        <AvatarFallback className="bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 text-blue-700 dark:text-blue-300 text-sm font-semibold">
-                          {getAuthorInitials(idea.user_email)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg font-bold text-current mb-2 line-clamp-2 drop-shadow-sm">
-                          {idea.title}
-                        </CardTitle>
-                        
-                        {/* Author and Job Title */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-semibold text-current opacity-90">
-                            {idea.user_name || idea.user_email.split('@')[0]}
-                          </span>
-                          {idea.user_profile?.job_title && (
-                            <>
-                              <span className="text-current opacity-60">•</span>
-                              <span className="text-sm text-current opacity-80">
-                                {idea.user_profile.job_title}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        
-                        {/* Department and Role Badges */}
-                        <div className="flex flex-wrap items-center gap-1 mb-2">
-                          {idea.department_name && (
-                            <Badge variant="secondary" className="text-xs bg-white/80 text-gray-800 border border-gray-300 shadow-sm">
-                              <Building2 className="w-2.5 h-2.5 mr-1" />
-                              {idea.department_name}
-                            </Badge>
-                          )}
-                          {idea.custom_role_name && (
-                            <Badge variant="secondary" className="text-xs bg-white/80 text-gray-800 border border-gray-300 shadow-sm">
-                              <Briefcase className="w-2.5 h-2.5 mr-1" />
-                              {idea.custom_role_name}
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        {/* Meta Information */}
-                        <div className="flex items-center gap-2 text-xs text-current opacity-80">
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{getRelativeTime(idea.created_at)}</span>
-                          </div>
-                          {idea.priority && (
-                            <Badge 
-                              variant="outline" 
-                              className="text-xs capitalize bg-white/70 text-gray-800 border-gray-400 px-1.5 py-0.5"
-                            >
-                              {IdeaPriorityLabels[idea.priority as keyof typeof IdeaPriorityLabels] || idea.priority}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleTogglePin(idea.id);
-                        }}
-                        disabled={togglingPin === idea.id}
-                        className={`ml-2 transition-all duration-200 rounded-full w-8 h-8 p-0 backdrop-blur-sm ${
-                          idea.is_pinned 
-                            ? 'bg-red-500/20 hover:bg-red-500/30 text-red-700 border border-red-300' 
-                            : 'bg-white/50 hover:bg-white/70 text-gray-600 hover:text-red-600 border border-gray-300'
-                        }`}
-                        title={idea.is_pinned ? 'Unpin idea' : 'Pin idea'}
-                      >
-                        {togglingPin === idea.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Pin className={`w-3 h-3 ${idea.is_pinned ? 'fill-current' : ''}`} />
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="pt-0">
-                  <p className="text-current opacity-90 leading-relaxed line-clamp-2 mb-3 text-sm font-medium">
-                    {idea.description}
-                  </p>
-                  
-                  {/* Engagement Actions */}
-                  <div className="flex items-center justify-between pt-3 border-t border-current/20">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLikeIdea(idea.id, idea.is_liked);
-                        }}
-                        disabled={likingIdea === idea.id}
-                        className={`flex items-center gap-1 h-7 px-2 transition-all duration-200 rounded-full backdrop-blur-sm ${
-                          idea.is_liked 
-                            ? 'bg-red-500/20 hover:bg-red-500/30 text-red-700 border border-red-300' 
-                            : 'bg-white/50 hover:bg-white/70 text-gray-600 hover:text-red-600 border border-gray-300'
-                        }`}
-                      >
-                        {likingIdea === idea.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Heart className={`w-3 h-3 transition-all duration-200 ${idea.is_liked ? 'fill-current' : ''}`} />
-                        )}
-                        <span className="text-xs font-medium">{idea.like_count || 0}</span>
-                      </Button>
-                    </div>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs bg-white/50 hover:bg-white/70 text-gray-700 hover:text-gray-900 border border-gray-300 rounded-full px-3 h-7 transition-all duration-200 backdrop-blur-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleIdeaClick(idea);
+            {/* Two Column Sticky Note Board Layout */}
+            <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+              {/* Left Column */}
+              <div className="flex-1 space-y-6">
+                {filteredIdeas.filter((_, index) => index % 2 === 0).map((idea, originalIndex) => {
+                  const actualIndex = filteredIdeas.findIndex(i => i.id === idea.id);
+                  const stickyStyle = getStickyNoteStyle(idea, actualIndex);
+                  return (
+                    <Card 
+                      key={idea.id} 
+                      className={`w-full relative overflow-hidden transition-all duration-300 animate-in slide-in-from-bottom cursor-pointer group border-2 ${
+                        stickyStyle.backgroundClass
+                      } ${
+                        stickyStyle.rotationClass
+                      } ${
+                        stickyStyle.shadowClass
+                      } hover:${stickyStyle.hoverShadow} hover:scale-105 hover:rotate-0 hover:z-10`}
+                      style={{ 
+                        animationDelay: `${actualIndex * 50}ms`,
+                        fontFamily: 'Satoshi, sans-serif',
+                        transformOrigin: 'center center',
                       }}
+                      onClick={() => handleIdeaClick(idea)}
                     >
-                      View Details →
-                    </Button>
-                  </div>
-                </CardContent>
-                </Card>
-              );
-            })}
+                    {idea.is_pinned && (
+                      <div className="absolute -top-2 -right-2 z-20">
+                        <div className="relative">
+                          {/* Pushpin shadow */}
+                          <div className="absolute top-1 left-1 w-6 h-6 bg-gray-800/20 rounded-full blur-sm"></div>
+                          {/* Pushpin body */}
+                          <div className="w-6 h-6 bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-full shadow-lg border-2 border-red-800 transform rotate-12">
+                            <div className="absolute inset-1 bg-gradient-to-br from-red-300 to-red-400 rounded-full"></div>
+                            {/* Pushpin needle */}
+                            <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-0.5 h-3 bg-gray-600 shadow-sm"></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <CardHeader className="pb-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4 flex-1">
+                          <Avatar className="w-12 h-12 ring-2 ring-offset-2 ring-gray-100 dark:ring-gray-800 group-hover:ring-blue-200 dark:group-hover:ring-blue-800 transition-all duration-300">
+                            {idea.user_profile?.profile_avatar ? (
+                              <AvatarImage 
+                                src={idea.user_profile.profile_avatar} 
+                                alt={idea.user_name || idea.user_email}
+                              />
+                            ) : null}
+                            <AvatarFallback className="bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 text-blue-700 dark:text-blue-300 text-sm font-semibold">
+                              {getAuthorInitials(idea.user_email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-lg font-bold text-current mb-2 line-clamp-2 drop-shadow-sm">
+                              {idea.title}
+                            </CardTitle>
+                            
+                            {/* Author and Job Title */}
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm font-semibold text-current opacity-90">
+                                {idea.user_name || idea.user_email.split('@')[0]}
+                              </span>
+                              {idea.user_profile?.job_title && (
+                                <>
+                                  <span className="text-current opacity-60">•</span>
+                                  <span className="text-sm text-current opacity-80">
+                                    {idea.user_profile.job_title}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            
+                            {/* Department and Role Badges */}
+                            <div className="flex flex-wrap items-center gap-1 mb-2">
+                              {idea.department_name && (
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 border border-blue-200 shadow-sm">
+                                  <Building2 className="w-2.5 h-2.5 mr-1" />
+                                  {idea.department_name}
+                                </Badge>
+                              )}
+                              {idea.custom_role_name && (
+                                <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 border border-purple-200 shadow-sm">
+                                  <Briefcase className="w-2.5 h-2.5 mr-1" />
+                                  {idea.custom_role_name}
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {/* Meta Information */}
+                            <div className="flex items-center gap-2 text-xs text-current opacity-80">
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>{getRelativeTime(idea.created_at)}</span>
+                              </div>
+                              
+                              {/* Status Badge */}
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs capitalize bg-green-100 text-green-800 border-green-200 px-1.5 py-0.5"
+                              >
+                                {IdeaStatusLabels[idea.status as keyof typeof IdeaStatusLabels] || idea.status}
+                              </Badge>
+                              
+                              {idea.priority && (
+                                <Badge 
+                                  variant="outline" 
+                                  className="text-xs capitalize bg-orange-100 text-orange-800 border-orange-200 px-1.5 py-0.5"
+                                >
+                                  {IdeaPriorityLabels[idea.priority as keyof typeof IdeaPriorityLabels] || idea.priority}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTogglePin(idea.id);
+                            }}
+                            disabled={togglingPin === idea.id}
+                            className={`ml-2 transition-all duration-200 rounded-full w-8 h-8 p-0 backdrop-blur-sm ${
+                              idea.is_pinned 
+                                ? 'bg-red-500/20 hover:bg-red-500/30 text-red-700 border border-red-300' 
+                                : 'bg-white/50 hover:bg-white/70 text-gray-600 hover:text-red-600 border border-gray-300'
+                            }`}
+                            title={idea.is_pinned ? 'Unpin idea' : 'Pin idea'}
+                          >
+                            {togglingPin === idea.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Pin className={`w-3 h-3 ${idea.is_pinned ? 'fill-current' : ''}`} />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="pt-0">
+                      <p className="text-current opacity-90 leading-relaxed line-clamp-2 mb-3 text-sm font-medium">
+                        {idea.description}
+                      </p>
+                      
+                      {/* Engagement Actions */}
+                      <div className="flex items-center justify-between pt-3 border-t border-current/20">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLikeIdea(idea.id, idea.is_liked);
+                            }}
+                            disabled={likingIdea === idea.id}
+                            className={`flex items-center gap-1 h-7 px-2 transition-all duration-200 rounded-full backdrop-blur-sm ${
+                              idea.is_liked 
+                                ? 'bg-red-500/20 hover:bg-red-500/30 text-red-700 border border-red-300' 
+                                : 'bg-white/50 hover:bg-white/70 text-gray-600 hover:text-red-600 border border-gray-300'
+                            }`}
+                          >
+                            {likingIdea === idea.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Heart className={`w-3 h-3 transition-all duration-200 ${idea.is_liked ? 'fill-current' : ''}`} />
+                            )}
+                            <span className="text-xs font-medium">{idea.like_count || 0}</span>
+                          </Button>
+                        </div>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs bg-white/50 hover:bg-white/70 text-gray-700 hover:text-gray-900 border border-gray-300 rounded-full px-3 h-7 transition-all duration-200 backdrop-blur-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleIdeaClick(idea);
+                          }}
+                        >
+                          View Details →
+                        </Button>
+                      </div>
+                    </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+              
+              {/* Right Column */}
+              <div className="flex-1 space-y-6">
+                {filteredIdeas.filter((_, index) => index % 2 === 1).map((idea, originalIndex) => {
+                  const actualIndex = filteredIdeas.findIndex(i => i.id === idea.id);
+                  const stickyStyle = getStickyNoteStyle(idea, actualIndex);
+                  return (
+                    <Card 
+                      key={idea.id} 
+                      className={`w-full relative overflow-hidden transition-all duration-300 animate-in slide-in-from-bottom cursor-pointer group border-2 ${
+                        stickyStyle.backgroundClass
+                      } ${
+                        stickyStyle.rotationClass
+                      } ${
+                        stickyStyle.shadowClass
+                      } hover:${stickyStyle.hoverShadow} hover:scale-105 hover:rotate-0 hover:z-10`}
+                      style={{ 
+                        animationDelay: `${actualIndex * 50}ms`,
+                        fontFamily: 'Satoshi, sans-serif',
+                        transformOrigin: 'center center',
+                      }}
+                      onClick={() => handleIdeaClick(idea)}
+                    >
+                    {idea.is_pinned && (
+                      <div className="absolute -top-2 -right-2 z-20">
+                        <div className="relative">
+                          {/* Pushpin shadow */}
+                          <div className="absolute top-1 left-1 w-6 h-6 bg-gray-800/20 rounded-full blur-sm"></div>
+                          {/* Pushpin body */}
+                          <div className="w-6 h-6 bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-full shadow-lg border-2 border-red-800 transform rotate-12">
+                            <div className="absolute inset-1 bg-gradient-to-br from-red-300 to-red-400 rounded-full"></div>
+                            {/* Pushpin needle */}
+                            <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-0.5 h-3 bg-gray-600 shadow-sm"></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <CardHeader className="pb-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4 flex-1">
+                          <Avatar className="w-12 h-12 ring-2 ring-offset-2 ring-gray-100 dark:ring-gray-800 group-hover:ring-blue-200 dark:group-hover:ring-blue-800 transition-all duration-300">
+                            {idea.user_profile?.profile_avatar ? (
+                              <AvatarImage 
+                                src={idea.user_profile.profile_avatar} 
+                                alt={idea.user_name || idea.user_email}
+                              />
+                            ) : null}
+                            <AvatarFallback className="bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 text-blue-700 dark:text-blue-300 text-sm font-semibold">
+                              {getAuthorInitials(idea.user_email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-lg font-bold text-current mb-2 line-clamp-2 drop-shadow-sm">
+                              {idea.title}
+                            </CardTitle>
+                            
+                            {/* Author and Job Title */}
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm font-semibold text-current opacity-90">
+                                {idea.user_name || idea.user_email.split('@')[0]}
+                              </span>
+                              {idea.user_profile?.job_title && (
+                                <>
+                                  <span className="text-current opacity-60">•</span>
+                                  <span className="text-sm text-current opacity-80">
+                                    {idea.user_profile.job_title}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            
+                            {/* Department and Role Badges */}
+                            <div className="flex flex-wrap items-center gap-1 mb-2">
+                              {idea.department_name && (
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 border border-blue-200 shadow-sm">
+                                  <Building2 className="w-2.5 h-2.5 mr-1" />
+                                  {idea.department_name}
+                                </Badge>
+                              )}
+                              {idea.custom_role_name && (
+                                <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 border border-purple-200 shadow-sm">
+                                  <Briefcase className="w-2.5 h-2.5 mr-1" />
+                                  {idea.custom_role_name}
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {/* Meta Information */}
+                            <div className="flex items-center gap-2 text-xs text-current opacity-80">
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>{getRelativeTime(idea.created_at)}</span>
+                              </div>
+                              
+                              {/* Status Badge */}
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs capitalize bg-green-100 text-green-800 border-green-200 px-1.5 py-0.5"
+                              >
+                                {IdeaStatusLabels[idea.status as keyof typeof IdeaStatusLabels] || idea.status}
+                              </Badge>
+                              
+                              {idea.priority && (
+                                <Badge 
+                                  variant="outline" 
+                                  className="text-xs capitalize bg-orange-100 text-orange-800 border-orange-200 px-1.5 py-0.5"
+                                >
+                                  {IdeaPriorityLabels[idea.priority as keyof typeof IdeaPriorityLabels] || idea.priority}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTogglePin(idea.id);
+                            }}
+                            disabled={togglingPin === idea.id}
+                            className={`ml-2 transition-all duration-200 rounded-full w-8 h-8 p-0 backdrop-blur-sm ${
+                              idea.is_pinned 
+                                ? 'bg-red-500/20 hover:bg-red-500/30 text-red-700 border border-red-300' 
+                                : 'bg-white/50 hover:bg-white/70 text-gray-600 hover:text-red-600 border border-gray-300'
+                            }`}
+                            title={idea.is_pinned ? 'Unpin idea' : 'Pin idea'}
+                          >
+                            {togglingPin === idea.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Pin className={`w-3 h-3 ${idea.is_pinned ? 'fill-current' : ''}`} />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="pt-0">
+                      <p className="text-current opacity-90 leading-relaxed line-clamp-2 mb-3 text-sm font-medium">
+                        {idea.description}
+                      </p>
+                      
+                      {/* Engagement Actions */}
+                      <div className="flex items-center justify-between pt-3 border-t border-current/20">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLikeIdea(idea.id, idea.is_liked);
+                            }}
+                            disabled={likingIdea === idea.id}
+                            className={`flex items-center gap-1 h-7 px-2 transition-all duration-200 rounded-full backdrop-blur-sm ${
+                              idea.is_liked 
+                                ? 'bg-red-500/20 hover:bg-red-500/30 text-red-700 border border-red-300' 
+                                : 'bg-white/50 hover:bg-white/70 text-gray-600 hover:text-red-600 border border-gray-300'
+                            }`}
+                          >
+                            {likingIdea === idea.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Heart className={`w-3 h-3 transition-all duration-200 ${idea.is_liked ? 'fill-current' : ''}`} />
+                            )}
+                            <span className="text-xs font-medium">{idea.like_count || 0}</span>
+                          </Button>
+                        </div>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs bg-white/50 hover:bg-white/70 text-gray-700 hover:text-gray-900 border border-gray-300 rounded-full px-3 h-7 transition-all duration-200 backdrop-blur-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleIdeaClick(idea);
+                          }}
+                        >
+                          View Details →
+                        </Button>
+                      </div>
+                    </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
         </div>

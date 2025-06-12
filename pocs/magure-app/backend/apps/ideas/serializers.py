@@ -209,7 +209,7 @@ class IdeaStatusUpdateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Idea
-        fields = ['status', 'assigned_to', 'notes']
+        fields = ['status', 'priority', 'assigned_to', 'notes']
     
     def update(self, instance, validated_data):
         request = self.context.get('request')
@@ -219,6 +219,7 @@ class IdeaStatusUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Authentication required")
         
         new_status = validated_data.get('status', instance.status)
+        new_priority = validated_data.get('priority', instance.priority)
         notes = validated_data.pop('notes', None)
         
         # Check if user can transition to new status
@@ -228,6 +229,11 @@ class IdeaStatusUpdateSerializer(serializers.ModelSerializer):
         # Update the status with proper tracking
         if new_status != instance.status:
             instance.update_status(new_status, user, notes)
+        
+        # Update priority if user has permission (tenant admins can update priority)
+        if user.role in ['superadmin', 'tenant_admin'] and new_priority != instance.priority:
+            instance.priority = new_priority
+            instance.save()
         
         # Update other fields if user has permission
         if user.role in ['superadmin', 'tenant_admin']:

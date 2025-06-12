@@ -55,19 +55,19 @@ export const IdeaStatusColors: Record<IdeaStatus, string> = {
   [IdeaStatus.Archived]: 'bg-slate-100 text-slate-800',
 };
 
-// Vibrant sticky-note background colors for cards
+// White sticky-note background colors with black text and colored borders
 export const IdeaStickyNoteColors: Record<IdeaStatus, string> = {
-  [IdeaStatus.Submitted]: 'bg-gradient-to-br from-blue-200 via-blue-300 to-blue-400 text-blue-900 border-blue-300',
-  [IdeaStatus.UnderReview]: 'bg-gradient-to-br from-yellow-200 via-yellow-300 to-amber-400 text-yellow-900 border-yellow-400',
-  [IdeaStatus.Refined]: 'bg-gradient-to-br from-indigo-200 via-indigo-300 to-purple-400 text-indigo-900 border-indigo-400',
-  [IdeaStatus.InDevelopment]: 'bg-gradient-to-br from-purple-200 via-purple-300 to-violet-400 text-purple-900 border-purple-400',
-  [IdeaStatus.Testing]: 'bg-gradient-to-br from-orange-200 via-orange-300 to-orange-400 text-orange-900 border-orange-400',
-  [IdeaStatus.Implemented]: 'bg-gradient-to-br from-green-200 via-green-300 to-emerald-400 text-green-900 border-green-400',
-  [IdeaStatus.Rejected]: 'bg-gradient-to-br from-red-200 via-red-300 to-red-400 text-red-900 border-red-400',
-  [IdeaStatus.OnHold]: 'bg-gradient-to-br from-gray-200 via-gray-300 to-slate-400 text-gray-900 border-gray-400',
-  [IdeaStatus.NeedsClarification]: 'bg-gradient-to-br from-amber-200 via-amber-300 to-yellow-400 text-amber-900 border-amber-400',
-  [IdeaStatus.Approved]: 'bg-gradient-to-br from-emerald-200 via-emerald-300 to-green-400 text-emerald-900 border-emerald-400',
-  [IdeaStatus.Archived]: 'bg-gradient-to-br from-slate-200 via-slate-300 to-gray-400 text-slate-900 border-slate-400',
+  [IdeaStatus.Submitted]: 'bg-white text-gray-900 border-blue-300 shadow-blue-100/50',
+  [IdeaStatus.UnderReview]: 'bg-white text-gray-900 border-yellow-300 shadow-yellow-100/50',
+  [IdeaStatus.Refined]: 'bg-white text-gray-900 border-indigo-300 shadow-indigo-100/50',
+  [IdeaStatus.InDevelopment]: 'bg-white text-gray-900 border-purple-300 shadow-purple-100/50',
+  [IdeaStatus.Testing]: 'bg-white text-gray-900 border-orange-300 shadow-orange-100/50',
+  [IdeaStatus.Implemented]: 'bg-white text-gray-900 border-green-300 shadow-green-100/50',
+  [IdeaStatus.Rejected]: 'bg-white text-gray-900 border-red-300 shadow-red-100/50',
+  [IdeaStatus.OnHold]: 'bg-white text-gray-900 border-gray-300 shadow-gray-100/50',
+  [IdeaStatus.NeedsClarification]: 'bg-white text-gray-900 border-amber-300 shadow-amber-100/50',
+  [IdeaStatus.Approved]: 'bg-white text-gray-900 border-emerald-300 shadow-emerald-100/50',
+  [IdeaStatus.Archived]: 'bg-white text-gray-900 border-slate-300 shadow-slate-100/50',
 };
 
 // Rotation angles for sticky-note effect (in degrees)

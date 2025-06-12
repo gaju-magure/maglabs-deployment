@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pin, Heart, User, Clock, Calendar, Loader2, Activity, Settings, FileText, Building2, Briefcase } from 'lucide-react';
 import { Idea, updateIdeaStatus } from '@/services/ideasApi';
-import { IdeaStatusLabels, IdeaStickyNoteColors, IdeaStatus } from '@/enums/ideaStatus';
+import { IdeaStatusLabels, IdeaPriorityLabels, IdeaStickyNoteColors, IdeaStatus } from '@/enums/ideaStatus';
 import { useToast } from '@/hooks/use-toast';
 
 interface IdeaDetailModalProps {
@@ -82,6 +82,28 @@ export const IdeaDetailModal: React.FC<IdeaDetailModalProps> = ({
       toast({
         title: "Error",
         description: "Failed to update idea status",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handlePriorityUpdate = async (newPriority: string) => {
+    if (!idea || !onStatusUpdate) return;
+    
+    try {
+      setIsUpdatingStatus(true);
+      const updatedIdea = await updateIdeaStatus(idea.id, { priority: newPriority });
+      onStatusUpdate(updatedIdea);
+      toast({
+        title: "Priority Updated",
+        description: `Idea priority changed to ${IdeaPriorityLabels[newPriority as keyof typeof IdeaPriorityLabels]}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update idea priority",
         variant: "destructive",
       });
     } finally {
@@ -302,14 +324,14 @@ export const IdeaDetailModal: React.FC<IdeaDetailModalProps> = ({
 
               {isAdmin && (
                 <TabsContent value="management" className="space-y-6 mt-0">
-                  {/* Status Management */}
+                  {/* Status and Priority Management */}
                   <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                       <Settings className="w-5 h-5 text-blue-600" />
-                      Status Management
+                      Status & Priority Management
                     </h3>
                     
-                    <div className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Current Status
@@ -332,13 +354,35 @@ export const IdeaDetailModal: React.FC<IdeaDetailModalProps> = ({
                         </Select>
                       </div>
                       
-                      {isUpdatingStatus && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Updating status...
-                        </div>
-                      )}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Priority Level
+                        </label>
+                        <Select
+                          value={idea.priority || 'medium'}
+                          onValueChange={handlePriorityUpdate}
+                          disabled={isUpdatingStatus}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(IdeaPriorityLabels).map(([value, label]) => (
+                              <SelectItem key={value} value={value}>
+                                {label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
+                      
+                    {isUpdatingStatus && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mt-4">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Updating...
+                      </div>
+                    )}
                   </div>
 
                   {/* Idea Metadata */}

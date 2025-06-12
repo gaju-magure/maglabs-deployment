@@ -164,30 +164,27 @@ class IdeaViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def content_wall(self, request):
         """
-        Content wall shows refined ideas that are visible to all users in the organization.
-        These are ideas that have been refined and approved for public viewing.
+        Content wall shows ideas based on user role:
+        - Tenant admins: All ideas in their tenant
+        - Tenant users: Only refined/approved ideas from their department/role + their own ideas
         """
         user = request.user
         
-        # Base queryset for content wall - refined ideas for public viewing
-        # Include 'refined' status which is the primary status for content wall
-        public_statuses = ['refined', 'approved', 'implemented', 'testing', 'in_development']
-        queryset = Idea.objects.filter(status__in=public_statuses)
-        
-        # Role-based filtering for content wall access - CRITICAL SECURITY FIX
+        # Role-based filtering for content wall access
         if user.role == 'superadmin':
-            # Super admins can see all public ideas across all tenants
-            pass
+            # Super admins can see all ideas across all tenants
+            queryset = Idea.objects.all()
         elif user.role == 'tenant_admin':
-            # Tenant admins can see all public ideas in their tenant
+            # Tenant admins can see ALL ideas in their tenant (not just public ones)
             # TODO: Add tenant filtering when multi-tenancy is fully implemented
-            pass
+            queryset = Idea.objects.all()
         elif user.role == 'tenant_user':
-            # SECURITY FIX: Tenant users can only see:
-            # 1. Their own ideas (all public statuses)
-            # 2. Public ideas from their department/role only
-            queryset = queryset.filter(
-                models.Q(user=user) |  # Own ideas
+            # Tenant users can only see:
+            # 1. Their own ideas (all statuses)
+            # 2. Refined/approved ideas from their department/role only
+            public_statuses = ['refined', 'approved', 'implemented', 'testing', 'in_development']
+            queryset = Idea.objects.filter(
+                models.Q(user=user) |  # Own ideas (all statuses)
                 models.Q(
                     department=user.department,
                     status__in=public_statuses
@@ -199,8 +196,9 @@ class IdeaViewSet(viewsets.ModelViewSet):
             ).distinct()
         else:
             # For any other roles, apply same restrictions as tenant_user
-            queryset = queryset.filter(
-                models.Q(user=user) |  # Own ideas
+            public_statuses = ['refined', 'approved', 'implemented', 'testing', 'in_development']
+            queryset = Idea.objects.filter(
+                models.Q(user=user) |  # Own ideas (all statuses)
                 models.Q(
                     department=user.department,
                     status__in=public_statuses
@@ -227,7 +225,7 @@ class IdeaViewSet(viewsets.ModelViewSet):
                 pass
         
         status_filter = request.query_params.get('status')
-        if status_filter and status_filter != 'all' and status_filter in public_statuses:
+        if status_filter and status_filter != 'all':
             queryset = queryset.filter(status=status_filter)
         
         priority_filter = request.query_params.get('priority')

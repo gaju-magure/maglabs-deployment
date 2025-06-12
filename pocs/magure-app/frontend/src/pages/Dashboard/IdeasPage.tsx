@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Search, Plus, Filter, BarChart3 } from 'lucide-react';
+import { Search, Plus, Filter } from 'lucide-react';
 import { IdeaChat } from '@/components/common/IdeaChat';
 import { IdeaDetailModal } from '@/components/common/IdeaDetailModal';
 import { StatusBadge, PriorityBadge } from '@/components/common/StatusBadge';
@@ -20,8 +20,6 @@ import { StatusTransitionButton } from '@/components/common/StatusTransitionButt
 import {
   Idea,
   getIdeasWithFilters,
-  getIdeaAnalytics,
-  IdeaAnalytics,
 } from '@/services/ideasApi';
 import {
   IdeaStatus,
@@ -33,11 +31,9 @@ import { toast } from 'sonner';
 
 export const IdeasPage: React.FC = () => {
   const [ideas, setIdeas] = useState<Idea[]>([]);
-  const [analytics, setAnalytics] = useState<IdeaAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
-  const [showChat, setShowChat] = useState(false);
-  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showChat, setShowChat] = useState(true);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -60,22 +56,9 @@ export const IdeasPage: React.FC = () => {
     }
   };
 
-  const loadAnalytics = async () => {
-    try {
-      const data = await getIdeaAnalytics();
-      setAnalytics(data);
-    } catch (error) {
-      console.error('Failed to load analytics:', error);
-    }
-  };
-
   useEffect(() => {
     loadIdeas();
   }, [filters]);
-
-  useEffect(() => {
-    loadAnalytics();
-  }, []);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -86,7 +69,6 @@ export const IdeasPage: React.FC = () => {
       prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea)
     );
     setSelectedIdea(updatedIdea);
-    loadAnalytics(); // Refresh analytics after status change
   };
 
   const clearFilters = () => {
@@ -125,13 +107,6 @@ export const IdeasPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowAnalytics(!showAnalytics)}
-          >
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Analytics
-          </Button>
           <Button onClick={() => setShowChat(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Idea
@@ -139,64 +114,6 @@ export const IdeasPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Analytics Dashboard */}
-      {showAnalytics && analytics && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Ideas Analytics
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold">{analytics.total_ideas}</div>
-                <div className="text-sm text-muted-foreground">Total Ideas</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{analytics.created_by_me}</div>
-                <div className="text-sm text-muted-foreground">Created by Me</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{analytics.assigned_to_me}</div>
-                <div className="text-sm text-muted-foreground">Assigned to Me</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">
-                  {analytics.by_status.approved || 0}
-                </div>
-                <div className="text-sm text-muted-foreground">Approved</div>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium mb-2">By Status</h4>
-                <div className="space-y-2">
-                  {Object.entries(analytics.by_status).map(([status, count]) => (
-                    <div key={status} className="flex items-center justify-between">
-                      <StatusBadge status={status} />
-                      <span className="font-medium">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">By Priority</h4>
-                <div className="space-y-2">
-                  {Object.entries(analytics.by_priority).map(([priority, count]) => (
-                    <div key={priority} className="flex items-center justify-between">
-                      <PriorityBadge priority={priority} />
-                      <span className="font-medium">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Filters */}
       <Card>

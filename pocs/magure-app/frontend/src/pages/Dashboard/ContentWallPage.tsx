@@ -9,9 +9,6 @@ import { getContentWallIdeas, toggleIdeaPin, likeIdea, unlikeIdea, type Idea } f
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { IdeaDetailModal } from '@/components/common/IdeaDetailModal';
-import { AdminPinningSidebar } from '@/components/common/AdminPinningSidebar';
-import { DepartmentFilter } from '@/components/common/DepartmentFilter';
-import { StatusBadge, PriorityBadge } from '@/components/common/StatusBadge';
 import { 
   Select,
   SelectContent,
@@ -39,70 +36,11 @@ export const ContentWallPage: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<string | undefined>();
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
   const [selectedPriority, setSelectedPriority] = useState<string | undefined>();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Check if user is admin (can pin/unpin ideas)
+  // Check if user is admin (can pin/unpin ideas and see filters)
   const isAdmin = user?.role === 'superadmin' || user?.role === 'tenant_admin';
-
-  // Filter ideas based on search query, department, and role
-  const filteredIdeas = ideas.filter(idea => {
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = (
-        idea.title.toLowerCase().includes(query) ||
-        idea.description.toLowerCase().includes(query) ||
-        idea.user_email.toLowerCase().includes(query) ||
-        idea.user_name?.toLowerCase().includes(query) ||
-        idea.department_name?.toLowerCase().includes(query) ||
-        idea.custom_role_name?.toLowerCase().includes(query)
-      );
-      if (!matchesSearch) return false;
-    }
-    
-    // Department filter
-    if (selectedDepartment) {
-      if (!idea.department_name || idea.department_name !== getDepartmentName(selectedDepartment)) {
-        return false;
-      }
-    }
-    
-    // Role filter
-    if (selectedRole) {
-      if (!idea.custom_role_name || idea.custom_role_name !== getRoleName(selectedRole)) {
-        return false;
-      }
-    }
-    
-    // Status filter
-    if (selectedStatus && selectedStatus !== 'all') {
-      if (idea.status !== selectedStatus) {
-        return false;
-      }
-    }
-    
-    // Priority filter
-    if (selectedPriority && selectedPriority !== 'all') {
-      if (idea.priority !== selectedPriority) {
-        return false;
-      }
-    }
-    
-    return true;
-  });
-
-  // Helper functions
-  const getDepartmentName = (id: string) => {
-    const departments = getDepartmentStats();
-    return departments.find(d => d.id === id)?.name;
-  };
-
-  const getRoleName = (id: string) => {
-    const roles = getRoleStats();
-    return roles.find(r => r.id === id)?.name;
-  };
 
   // Calculate department statistics
   const getDepartmentStats = () => {
@@ -144,18 +82,78 @@ export const ContentWallPage: React.FC = () => {
     }));
   };
 
+  // Helper functions
+  const getDepartmentName = (id: string) => {
+    const departments = getDepartmentStats();
+    return departments.find(d => d.id === id)?.name;
+  };
+
+  const getRoleName = (id: string) => {
+    const roles = getRoleStats();
+    return roles.find(r => r.id === id)?.name;
+  };
+
+  // Filter ideas based on search query, department, and role
+  const filteredIdeas = ideas.filter(idea => {
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = (
+        idea.title.toLowerCase().includes(query) ||
+        idea.description.toLowerCase().includes(query) ||
+        idea.user_email.toLowerCase().includes(query) ||
+        idea.user_name?.toLowerCase().includes(query) ||
+        idea.department_name?.toLowerCase().includes(query) ||
+        idea.custom_role_name?.toLowerCase().includes(query)
+      );
+      if (!matchesSearch) return false;
+    }
+    
+    // Department filter (only for admins)
+    if (isAdmin && selectedDepartment) {
+      if (!idea.department_name || idea.department_name !== getDepartmentName(selectedDepartment)) {
+        return false;
+      }
+    }
+    
+    // Role filter (only for admins)
+    if (isAdmin && selectedRole) {
+      if (!idea.custom_role_name || idea.custom_role_name !== getRoleName(selectedRole)) {
+        return false;
+      }
+    }
+    
+    // Status filter (only for admins)
+    if (isAdmin && selectedStatus && selectedStatus !== 'all') {
+      if (idea.status !== selectedStatus) {
+        return false;
+      }
+    }
+    
+    // Priority filter (only for admins)
+    if (isAdmin && selectedPriority && selectedPriority !== 'all') {
+      if (idea.priority !== selectedPriority) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+
   // Load content wall ideas on mount and when filters change
   useEffect(() => {
     const loadIdeas = async () => {
       try {
         setLoading(true);
         
-        // Build query parameters
+        // Build query parameters (only for admins)
         const params = new URLSearchParams();
-        if (selectedDepartment) params.append('department', selectedDepartment);
-        if (selectedRole) params.append('role', selectedRole);
-        if (selectedStatus && selectedStatus !== 'all') params.append('status', selectedStatus);
-        if (selectedPriority && selectedPriority !== 'all') params.append('priority', selectedPriority);
+        if (isAdmin) {
+          if (selectedDepartment) params.append('department', selectedDepartment);
+          if (selectedRole) params.append('role', selectedRole);
+          if (selectedStatus && selectedStatus !== 'all') params.append('status', selectedStatus);
+          if (selectedPriority && selectedPriority !== 'all') params.append('priority', selectedPriority);
+        }
         if (searchQuery.trim()) params.append('search', searchQuery.trim());
         
         const data = await getContentWallIdeas(params.toString());
@@ -327,9 +325,7 @@ export const ContentWallPage: React.FC = () => {
   }
 
   return (
-    <div className="w-full min-h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex">
-      {/* Main Content */}
-      <div className={`flex-1 transition-all duration-300 ${isAdmin && sidebarOpen ? 'mr-96' : ''}`}>
+    <div className="w-full min-h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
@@ -419,69 +415,101 @@ export const ContentWallPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-          <div className="space-y-4">
-            <DepartmentFilter
-              departments={getDepartmentStats()}
-              roles={getRoleStats()}
-              selectedDepartment={selectedDepartment}
-              selectedRole={selectedRole}
-              onDepartmentChange={setSelectedDepartment}
-              onRoleChange={setSelectedRole}
-            />
-            
-            {/* Additional Filters */}
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">Additional Filters:</span>
+        {/* Filters - Only visible for admins */}
+        {isAdmin && (
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+            <div className="space-y-4">
+              {/* Department and Role Filters */}
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-muted-foreground">Filters:</span>
+                </div>
+                
+                {/* Department Filter */}
+                {getDepartmentStats().length > 0 && (
+                  <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="All departments" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {getDepartmentStats().map(dept => (
+                        <SelectItem key={dept.id} value={dept.id}>
+                          {dept.name} ({dept.count})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Role Filter */}
+                {getRoleStats().length > 0 && (
+                  <Select value={selectedRole} onValueChange={setSelectedRole}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="All roles" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      {getRoleStats().map(role => (
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.name} ({role.count})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                
+                {/* Status Filter */}
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    {Object.entries(IdeaStatusLabels).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Priority Filter */}
+                <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All priorities" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priorities</SelectItem>
+                    {Object.entries(IdeaPriorityLabels).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Clear Filters Button */}
+                {(selectedDepartment || selectedRole || (selectedStatus && selectedStatus !== 'all') || (selectedPriority && selectedPriority !== 'all')) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedDepartment(undefined);
+                      setSelectedRole(undefined);
+                      setSelectedStatus(undefined);
+                      setSelectedPriority(undefined);
+                    }}
+                    className="text-sm"
+                  >
+                    Clear Filters
+                  </Button>
+                )}
               </div>
-              
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="refined">Refined</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="implemented">Implemented</SelectItem>
-                  <SelectItem value="testing">Testing</SelectItem>
-                  <SelectItem value="in_development">In Development</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedPriority} onValueChange={setSelectedPriority}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Priorities</SelectItem>
-                  {Object.entries(IdeaPriorityLabels).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {((selectedStatus && selectedStatus !== 'all') || (selectedPriority && selectedPriority !== 'all')) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedStatus('all');
-                    setSelectedPriority('all');
-                  }}
-                  className="text-sm"
-                >
-                  Clear Filters
-                </Button>
-              )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Content */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -533,27 +561,32 @@ export const ContentWallPage: React.FC = () => {
             {filteredIdeas.map((idea, index) => (
               <Card 
                 key={idea.id} 
-                className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl animate-in slide-in-from-bottom cursor-pointer ${
+                className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl animate-in slide-in-from-bottom cursor-pointer group ${
                   idea.is_pinned 
-                    ? 'ring-2 ring-yellow-200 dark:ring-yellow-800 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20' 
-                    : 'hover:scale-[1.02] transform'
+                    ? 'ring-2 ring-amber-400/50 dark:ring-amber-600/50 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/10 dark:via-orange-950/10 dark:to-yellow-950/10 shadow-amber-100/50 dark:shadow-amber-900/20' 
+                    : 'hover:scale-[1.01] transform bg-white dark:bg-gray-900 hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:shadow-gray-900/50'
                 }`}
                 style={{ 
-                  animationDelay: `${index * 100}ms`,
+                  animationDelay: `${index * 50}ms`,
                   fontFamily: 'Satoshi, sans-serif'
                 }}
                 onClick={() => handleIdeaClick(idea)}
               >
                 {idea.is_pinned && (
-                  <div className="absolute top-0 right-0 w-0 h-0 border-l-[40px] border-l-transparent border-t-[40px] border-t-yellow-400">
-                    <Pin className="absolute -top-8 -right-7 w-4 h-4 text-white transform rotate-45" />
+                  <div className="absolute top-0 right-0">
+                    <div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white px-3 py-1 rounded-bl-lg shadow-lg">
+                      <div className="flex items-center gap-1">
+                        <Pin className="w-3 h-3 fill-current" />
+                        <span className="text-xs font-semibold">Pinned</span>
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4 flex-1">
-                      <Avatar className="w-12 h-12 ring-2 ring-gray-200 dark:ring-gray-700">
+                      <Avatar className="w-12 h-12 ring-2 ring-offset-2 ring-gray-100 dark:ring-gray-800 group-hover:ring-blue-200 dark:group-hover:ring-blue-800 transition-all duration-300">
                         {idea.user_profile?.profile_avatar ? (
                           <AvatarImage 
                             src={idea.user_profile.profile_avatar} 
@@ -565,7 +598,7 @@ export const ContentWallPage: React.FC = () => {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                        <CardTitle className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-2 line-clamp-2 group-hover:from-blue-600 group-hover:to-purple-600 dark:group-hover:from-blue-400 dark:group-hover:to-purple-400 transition-all duration-300">
                           {idea.title}
                         </CardTitle>
                         
@@ -585,15 +618,15 @@ export const ContentWallPage: React.FC = () => {
                         </div>
                         
                         {/* Department and Role Badges */}
-                        <div className="flex items-center gap-2 mb-3">
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
                           {idea.department_name && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="secondary" className="text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
                               <Building2 className="w-3 h-3 mr-1" />
                               {idea.department_name}
                             </Badge>
                           )}
                           {idea.custom_role_name && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="secondary" className="text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
                               <Briefcase className="w-3 h-3 mr-1" />
                               {idea.custom_role_name}
                             </Badge>
@@ -606,8 +639,22 @@ export const ContentWallPage: React.FC = () => {
                             <Clock className="w-4 h-4" />
                             <span>{getRelativeTime(idea.created_at)}</span>
                           </div>
-                          <StatusBadge status={idea.status} />
-                          <PriorityBadge priority={idea.priority} />
+                          {idea.status && (
+                            <Badge 
+                              variant="secondary" 
+                              className="text-xs capitalize"
+                            >
+                              {IdeaStatusLabels[idea.status as keyof typeof IdeaStatusLabels] || idea.status}
+                            </Badge>
+                          )}
+                          {idea.priority && (
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs capitalize"
+                            >
+                              {IdeaPriorityLabels[idea.priority as keyof typeof IdeaPriorityLabels] || idea.priority}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -621,10 +668,10 @@ export const ContentWallPage: React.FC = () => {
                           handleTogglePin(idea.id);
                         }}
                         disabled={togglingPin === idea.id}
-                        className={`ml-4 transition-all duration-200 ${
+                        className={`ml-4 transition-all duration-200 rounded-lg ${
                           idea.is_pinned 
-                            ? 'text-yellow-600 hover:text-yellow-700 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30' 
-                            : 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/10'
+                            ? 'text-amber-600 hover:text-amber-700 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/20 dark:hover:bg-amber-900/30' 
+                            : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/10'
                         }`}
                       >
                         {togglingPin === idea.id ? (
@@ -638,32 +685,46 @@ export const ContentWallPage: React.FC = () => {
                 </CardHeader>
 
                 <CardContent className="pt-0">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap mb-4">
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-3 mb-4">
                     {idea.description}
                   </p>
                   
                   {/* Engagement Actions */}
-                  <div className="flex items-center gap-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center gap-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLikeIdea(idea.id, idea.is_liked);
+                        }}
+                        disabled={likingIdea === idea.id}
+                        className={`flex items-center gap-2 transition-all duration-200 rounded-lg ${
+                          idea.is_liked 
+                            ? 'text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30' 
+                            : 'text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'
+                        }`}
+                      >
+                        {likingIdea === idea.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Heart className={`w-4 h-4 transition-all duration-200 ${idea.is_liked ? 'fill-current' : ''}`} />
+                        )}
+                        <span className="text-sm font-medium">{idea.like_count || 0}</span>
+                      </Button>
+                    </div>
+                    
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleLikeIdea(idea.id, idea.is_liked);
+                        handleIdeaClick(idea);
                       }}
-                      disabled={likingIdea === idea.id}
-                      className={`flex items-center gap-2 transition-all duration-200 ${
-                        idea.is_liked 
-                          ? 'text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30' 
-                          : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'
-                      }`}
                     >
-                      {likingIdea === idea.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Heart className={`w-4 h-4 ${idea.is_liked ? 'fill-current' : ''}`} />
-                      )}
-                      <span className="text-sm font-medium">{idea.like_count}</span>
+                      View Details →
                     </Button>
                   </div>
                 </CardContent>
@@ -672,23 +733,6 @@ export const ContentWallPage: React.FC = () => {
           </div>
         )}
         </div>
-      </div>
-
-      {/* Admin Sidebar */}
-      {isAdmin && (
-        <AdminPinningSidebar
-          isOpen={sidebarOpen}
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
-          onIdeaUpdate={(updatedIdea) => {
-            setIdeas(prevIdeas => 
-              prevIdeas.map(idea => 
-                idea.id === updatedIdea.id ? updatedIdea : idea
-              )
-            );
-          }}
-        />
-      )}
-
       {/* Idea Detail Modal */}
       <IdeaDetailModal
         idea={selectedIdea}

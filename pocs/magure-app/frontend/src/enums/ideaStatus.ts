@@ -12,18 +12,18 @@ export enum IdeaStatus {
   Archived = 'archived',
 }
 
-export const IdeaStatusLabels: Record<IdeaStatus, string> = {
-  [IdeaStatus.Submitted]: 'Submitted',
-  [IdeaStatus.UnderReview]: 'Under Review',
-  [IdeaStatus.Refined]: 'Refined',
-  [IdeaStatus.InDevelopment]: 'In Development',
-  [IdeaStatus.Testing]: 'Testing',
-  [IdeaStatus.Implemented]: 'Implemented',
-  [IdeaStatus.Rejected]: 'Rejected',
-  [IdeaStatus.OnHold]: 'On Hold',
-  [IdeaStatus.NeedsClarification]: 'Needs Clarification',
-  [IdeaStatus.Approved]: 'Approved',
-  [IdeaStatus.Archived]: 'Archived',
+export const IdeaStatusLabels: Record<string, string> = {
+  'submitted': 'Submitted',
+  'under_review': 'Under Review',
+  'refined': 'Refined',
+  'in_development': 'In Development',
+  'testing': 'Testing',
+  'implemented': 'Implemented',
+  'rejected': 'Rejected',
+  'on_hold': 'On Hold',
+  'needs_clarification': 'Needs Clarification',
+  'approved': 'Approved',
+  'archived': 'Archived',
 };
 
 export enum IdeaPriority {
@@ -33,11 +33,11 @@ export enum IdeaPriority {
   Critical = 'critical',
 }
 
-export const IdeaPriorityLabels: Record<IdeaPriority, string> = {
-  [IdeaPriority.Low]: 'Low',
-  [IdeaPriority.Medium]: 'Medium',
-  [IdeaPriority.High]: 'High',
-  [IdeaPriority.Critical]: 'Critical',
+export const IdeaPriorityLabels: Record<string, string> = {
+  'low': 'Low',
+  'medium': 'Medium',
+  'high': 'High',
+  'critical': 'Critical',
 };
 
 // Status color mappings for UI components

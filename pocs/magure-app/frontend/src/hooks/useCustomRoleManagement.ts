@@ -37,7 +37,7 @@ export const useCustomRoleManagement = () => {
       }
       
       const rolesData = await getCustomRoles();
-      setCustomRoles(rolesData.results || []);
+      setCustomRoles(rolesData || []);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch custom roles';
       setError(errorMessage);

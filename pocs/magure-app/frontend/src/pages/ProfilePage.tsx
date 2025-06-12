@@ -154,12 +154,24 @@ export const ProfilePage: React.FC = () => {
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    if (user?.id) {
+      loadProfile();
+    }
+  }, [user?.id]);
 
   const loadProfile = async () => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User not found. Please log in again.",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
-      const profileData = await getCurrentUserProfile();
+      const profileData = await getCurrentUserProfile(user.id);
       setProfile(profileData);
     } catch (error) {
       toast({
@@ -173,12 +185,12 @@ export const ProfilePage: React.FC = () => {
   };
 
   const handleFieldUpdate = async (field: string, value: string) => {
-    if (!profile) return;
+    if (!profile || !user?.id) return;
 
     setUpdating(true);
     try {
       const updateData: UpdateProfileRequest = { [field]: value };
-      const updatedProfile = await updateCurrentUserProfile(updateData);
+      const updatedProfile = await updateCurrentUserProfile(user.id, updateData);
       setProfile(updatedProfile);
       setEditingField(null);
       

@@ -120,8 +120,8 @@ export async function updateUser(userId: string, userData: UpdateUserRequest): P
   return response.json();
 }
 
-export async function getCurrentUserProfile(): Promise<UserProfile> {
-  const response = await fetch(`${getBaseUrl()}/api/v1/accounts/profile/`, {
+export async function getCurrentUserProfile(userId: string): Promise<UserProfile> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/accounts/users/${userId}/profile/`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -133,8 +133,8 @@ export async function getCurrentUserProfile(): Promise<UserProfile> {
   return response.json();
 }
 
-export async function updateCurrentUserProfile(profileData: UpdateProfileRequest): Promise<UserProfile> {
-  const response = await fetch(`${getBaseUrl()}/api/v1/accounts/profile/`, {
+export async function updateCurrentUserProfile(userId: string, profileData: UpdateProfileRequest): Promise<UserProfile> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/accounts/users/${userId}/profile/`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(profileData),

@@ -153,12 +153,13 @@ export function CompanyDetailsStep({ onSubmit, onComplete, isLoading, tenantName
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="company_website">Company Website (Optional)</Label>
+          <Label htmlFor="company_website">Company Website</Label>
           <Input
             id="company_website"
             type="url"
             placeholder="https://www.yourcompany.com"
             {...register('company_website', {
+              required: true,
               pattern: {
                 value: /^https?:\/\/.+\..+/,
                 message: 'Please enter a valid website URL',
@@ -172,12 +173,13 @@ export function CompanyDetailsStep({ onSubmit, onComplete, isLoading, tenantName
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Company Description (Optional)</Label>
+          <Label htmlFor="description">Company Description</Label>
           <Textarea
             id="description"
             placeholder="Tell us about your company, what you do, your mission..."
             rows={4}
             {...register('description', {
+              required: true,
               maxLength: {
                 value: 500,
                 message: 'Description must be less than 500 characters',

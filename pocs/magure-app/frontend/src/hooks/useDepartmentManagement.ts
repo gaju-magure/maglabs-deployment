@@ -43,7 +43,7 @@ export const useDepartmentManagement = () => {
         getDepartmentTree().catch(() => []) // Fallback to empty array if tree fails
       ]);
       
-      setDepartments(deptData.results || []);
+      setDepartments(deptData || []);
       setDepartmentTree(treeData || []);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch departments';

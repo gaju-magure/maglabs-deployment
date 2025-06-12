@@ -102,7 +102,7 @@ export const Navbar: React.FC = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 rounded-xl">
                 <DropdownMenuItem asChild>
-                  <Link to="/profile" className="flex items-center cursor-pointer" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  <Link to="/dashboard/profile" className="flex items-center cursor-pointer" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                     <User className="mr-2 h-4 w-4" />
                     Profile Settings
                   </Link>
@@ -173,7 +173,7 @@ export const Navbar: React.FC = () => {
             ))}
             <div className="border-t pt-3 mt-3">
               <Link
-                to="/profile"
+                to="/dashboard/profile"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="text-gray-600 hover:text-blue-700 font-medium py-2 px-3 rounded-md hover:bg-gray-50 flex items-center"
                 style={{ fontFamily: 'Satoshi, sans-serif' }}

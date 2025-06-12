@@ -83,7 +83,7 @@ function getAuthHeaders(): HeadersInit {
 }
 
 // Custom Roles API Functions
-export async function getCustomRoles(): Promise<CustomRolesResponse> {
+export async function getCustomRoles(): Promise<CustomRole []> {
   const response = await fetch(`${getBaseUrl()}/api/v1/tenants/admin/roles/`, {
     method: 'GET',
     headers: getAuthHeaders(),
@@ -167,7 +167,7 @@ export async function duplicateCustomRole(roleId: number): Promise<CustomRole> {
 }
 
 // Departments API Functions
-export async function getDepartments(): Promise<DepartmentsResponse> {
+export async function getDepartments(): Promise<Department []> {
   const response = await fetch(`${getBaseUrl()}/api/v1/tenants/admin/departments/`, {
     method: 'GET',
     headers: getAuthHeaders(),

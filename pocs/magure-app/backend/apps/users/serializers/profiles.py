@@ -7,26 +7,66 @@ User = get_user_model()
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    """Serializer for UserProfile model"""
+    """Serializer for UserProfile model with complete user data"""
     
-    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    # User fields
+    id = serializers.IntegerField(source='user.id', read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
-    full_name = serializers.SerializerMethodField()
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    role = serializers.CharField(source='user.role', read_only=True)
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+    
+    # Profile avatar URL
+    avatar_url = serializers.SerializerMethodField()
+    
+    # Department and custom role details
+    department = serializers.SerializerMethodField()
+    custom_role = serializers.SerializerMethodField()
+    
+    # Profile details nested under 'profile' key for frontend compatibility
+    profile = serializers.SerializerMethodField()
     
     class Meta:
         model = UserProfile
         fields = [
-            'user_id', 'username', 'email', 'full_name',
-            'job_title', 'department', 'phone_number',
-            'bio', 'linkedin_url', 'profile_avatar',
-            'timezone', 'hire_date', 'manager',
-            'created_at', 'updated_at'
+            'id', 'username', 'email', 'first_name', 'last_name', 'role', 'is_active',
+            'avatar_url', 'department', 'custom_role', 'profile'
         ]
-        read_only_fields = ['created_at', 'updated_at']
     
-    def get_full_name(self, obj):
-        return obj.user.get_full_name() or obj.user.username
+    def get_avatar_url(self, obj):
+        if obj.profile_avatar:
+            return obj.profile_avatar.url
+        return None
+    
+    def get_department(self, obj):
+        if obj.user.department:
+            return {
+                'id': obj.user.department.id,
+                'name': obj.user.department.name
+            }
+        return None
+    
+    def get_custom_role(self, obj):
+        if obj.user.custom_role:
+            return {
+                'id': obj.user.custom_role.id,
+                'name': obj.user.custom_role.name
+            }
+        return None
+    
+    def get_profile(self, obj):
+        return {
+            'job_title': obj.job_title,
+            'department': self.get_department(obj),
+            'custom_role': self.get_custom_role(obj),
+            'phone_number': obj.phone_number,
+            'bio': obj.bio,
+            'linkedin_url': obj.linkedin_url,
+            'timezone': obj.timezone,
+            'hire_date': obj.hire_date,
+        }
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):

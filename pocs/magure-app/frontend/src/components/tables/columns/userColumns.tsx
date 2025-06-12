@@ -11,6 +11,31 @@ export interface UserData {
   last_name: string;
   role: string;
   is_active: boolean;
+  avatar_url?: string;
+  department?: {
+    id: number;
+    name: string;
+  } | null;
+  custom_role?: {
+    id: number;
+    name: string;
+  } | null;
+  profile?: {
+    job_title?: string;
+    department?: {
+      id: number;
+      name: string;
+    } | null;
+    custom_role?: {
+      id: number;
+      name: string;
+    } | null;
+    phone_number?: string;
+    bio?: string;
+    linkedin_url?: string;
+    timezone?: string;
+    hire_date?: string;
+  };
 }
 
 const getRoleBadgeColor = (userRole: string) => {
@@ -29,9 +54,17 @@ export const userColumns: DataTableColumn<UserData>[] = [
     width: '300px',
     render: (user) => (
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-[#FDA052] to-[#B96AF7] flex items-center justify-center text-white font-semibold text-xs sm:text-sm flex-shrink-0">
-          {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-        </div>
+        {user.avatar_url ? (
+          <img 
+            src={user.avatar_url} 
+            alt={`${user.first_name} ${user.last_name}`}
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0"
+          />
+        ) : (
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-[#FDA052] to-[#B96AF7] flex items-center justify-center text-white font-semibold text-xs sm:text-sm flex-shrink-0">
+            {user.first_name.charAt(0)}{user.last_name.charAt(0)}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <p className="font-medium text-gray-900 dark:text-white truncate" style={{ fontFamily: 'Satoshi, sans-serif' }}>
             {user.first_name} {user.last_name}

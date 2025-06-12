@@ -380,7 +380,7 @@ export const ProfilePage: React.FC = () => {
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
                     <Building className="h-4 w-4 text-gray-400 flex-shrink-0" />
                     <span className="text-gray-900 dark:text-white flex-1" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                      {profile.profile?.department?.name || 'Not assigned'}
+                      {profile.department?.name || 'Not assigned'}
                     </span>
                   </div>
                 </div>
@@ -393,7 +393,7 @@ export const ProfilePage: React.FC = () => {
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
                     <Shield className="h-4 w-4 text-gray-400 flex-shrink-0" />
                     <span className="text-gray-900 dark:text-white flex-1" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                      {profile.profile?.custom_role?.name || 'None'}
+                      {profile.custom_role?.name || 'None'}
                     </span>
                   </div>
                 </div>

@@ -30,6 +30,15 @@ export interface UserProfile {
   last_name?: string;
   role?: string;
   is_active?: boolean;
+  avatar_url?: string;
+  department?: {
+    id: number;
+    name: string;
+  } | null;
+  custom_role?: {
+    id: number;
+    name: string;
+  } | null;
   profile?: {
     job_title?: string;
     department?: {
@@ -40,8 +49,12 @@ export interface UserProfile {
       id: number;
       name: string;
     } | null;
+    phone_number?: string;
+    bio?: string;
+    linkedin_url?: string;
+    timezone?: string;
+    hire_date?: string;
   };
-  avatar_url?: string;
 }
 
 export interface UpdateProfileRequest {
@@ -62,6 +75,31 @@ export interface CreateUserResponse {
   last_name: string;
   role: string;
   is_active: boolean;
+  avatar_url?: string;
+  department?: {
+    id: number;
+    name: string;
+  } | null;
+  custom_role?: {
+    id: number;
+    name: string;
+  } | null;
+  profile?: {
+    job_title?: string;
+    department?: {
+      id: number;
+      name: string;
+    } | null;
+    custom_role?: {
+      id: number;
+      name: string;
+    } | null;
+    phone_number?: string;
+    bio?: string;
+    linkedin_url?: string;
+    timezone?: string;
+    hire_date?: string;
+  };
 }
 
 export interface UserListPaginationResponse {

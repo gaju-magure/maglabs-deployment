@@ -4,40 +4,19 @@ from django.contrib.auth import get_user_model
 UserModel = get_user_model()
 
 class UserListSerializer(serializers.ModelSerializer):
-    profile_avatar = serializers.SerializerMethodField()
-    department_name = serializers.CharField(source='department.name', read_only=True)
-    
-    class Meta:
-        model = UserModel
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 
-                  'is_active', 'profile_avatar', 'department_name']
-    
-    def get_profile_avatar(self, obj):
-        if hasattr(obj, 'profile') and obj.profile.profile_avatar:
-            return obj.profile.profile_avatar.url
-        return None
-
-class UserDetailSerializer(serializers.ModelSerializer):
-    profile = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
     custom_role = serializers.SerializerMethodField()
+    profile = serializers.SerializerMethodField()
     
     class Meta:
         model = UserModel
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 
-                  'is_active', 'department', 'custom_role', 'profile']
+                  'is_active', 'avatar_url', 'department', 'custom_role', 'profile']
     
-    def get_profile(self, obj):
-        if hasattr(obj, 'profile'):
-            return {
-                'job_title': obj.profile.job_title,
-                'phone_number': obj.profile.phone_number,
-                'bio': obj.profile.bio,
-                'linkedin_url': obj.profile.linkedin_url,
-                'profile_avatar': obj.profile.profile_avatar.url if obj.profile.profile_avatar else None,
-                'timezone': obj.profile.timezone,
-                'hire_date': obj.profile.hire_date,
-            }
+    def get_avatar_url(self, obj):
+        if hasattr(obj, 'profile') and obj.profile.profile_avatar:
+            return obj.profile.profile_avatar.url
         return None
     
     def get_department(self, obj):
@@ -53,6 +32,66 @@ class UserDetailSerializer(serializers.ModelSerializer):
             return {
                 'id': obj.custom_role.id,
                 'name': obj.custom_role.name
+            }
+        return None
+    
+    def get_profile(self, obj):
+        if hasattr(obj, 'profile'):
+            return {
+                'job_title': obj.profile.job_title,
+                'department': self.get_department(obj),
+                'custom_role': self.get_custom_role(obj),
+                'phone_number': obj.profile.phone_number,
+                'bio': obj.profile.bio,
+                'linkedin_url': obj.profile.linkedin_url,
+                'timezone': obj.profile.timezone,
+                'hire_date': obj.profile.hire_date,
+            }
+        return None
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField()
+    department = serializers.SerializerMethodField()
+    custom_role = serializers.SerializerMethodField()
+    profile = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = UserModel
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 
+                  'is_active', 'avatar_url', 'department', 'custom_role', 'profile']
+    
+    def get_avatar_url(self, obj):
+        if hasattr(obj, 'profile') and obj.profile.profile_avatar:
+            return obj.profile.profile_avatar.url
+        return None
+    
+    def get_department(self, obj):
+        if obj.department:
+            return {
+                'id': obj.department.id,
+                'name': obj.department.name
+            }
+        return None
+    
+    def get_custom_role(self, obj):
+        if obj.custom_role:
+            return {
+                'id': obj.custom_role.id,
+                'name': obj.custom_role.name
+            }
+        return None
+    
+    def get_profile(self, obj):
+        if hasattr(obj, 'profile'):
+            return {
+                'job_title': obj.profile.job_title,
+                'department': self.get_department(obj),
+                'custom_role': self.get_custom_role(obj),
+                'phone_number': obj.profile.phone_number,
+                'bio': obj.profile.bio,
+                'linkedin_url': obj.profile.linkedin_url,
+                'timezone': obj.profile.timezone,
+                'hire_date': obj.profile.hire_date,
             }
         return None
 

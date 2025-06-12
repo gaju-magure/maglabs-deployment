@@ -31,7 +31,7 @@ const RoleAwareDashboardRoutes = () => {
       case "tenant_admin":
         return "/dashboard/content";
       case "tenant_user":
-        return "/dashboard/ideas";
+        return "/dashboard/chat";
       default:
         return "/unauthorized";
     }

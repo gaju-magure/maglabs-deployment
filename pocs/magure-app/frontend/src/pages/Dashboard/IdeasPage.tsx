@@ -12,8 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Search, Plus, Filter } from 'lucide-react';
-import { IdeaChat } from '@/components/common/IdeaChat';
+import { Search, Filter } from 'lucide-react';
 import { IdeaDetailModal } from '@/components/common/IdeaDetailModal';
 import { StatusBadge, PriorityBadge } from '@/components/common/StatusBadge';
 import { StatusTransitionButton } from '@/components/common/StatusTransitionButton';
@@ -33,7 +32,6 @@ export const IdeasPage: React.FC = () => {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
-  const [showChat, setShowChat] = useState(true);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -80,21 +78,6 @@ export const IdeasPage: React.FC = () => {
     });
   };
 
-  if (showChat) {
-    return (
-      <div className="h-full">
-        <div className="mb-4">
-          <Button
-            variant="outline"
-            onClick={() => setShowChat(false)}
-          >
-            ← Back to Ideas
-          </Button>
-        </div>
-        <IdeaChat />
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -103,14 +86,8 @@ export const IdeasPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Ideas</h1>
           <p className="text-muted-foreground">
-            Manage and track ideas across their lifecycle
+            View, filter, and manage submitted ideas
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setShowChat(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Idea
-          </Button>
         </div>
       </div>
 
@@ -201,11 +178,8 @@ export const IdeasPage: React.FC = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center py-8">
-                <div className="text-muted-foreground mb-4">No ideas found</div>
-                <Button onClick={() => setShowChat(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create your first idea
-                </Button>
+                <div className="text-muted-foreground mb-4">No ideas found matching current filters</div>
+                <p className="text-sm text-muted-foreground">Try adjusting your filters or check back later for new ideas.</p>
               </div>
             </CardContent>
           </Card>

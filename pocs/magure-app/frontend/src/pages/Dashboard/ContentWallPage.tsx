@@ -4,13 +4,27 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Pin, Loader2, Sparkles, Clock, User, Heart, Search, X, Building2, Briefcase } from 'lucide-react';
+import { Pin, Loader2, Sparkles, Clock, User, Heart, Search, X, Building2, Briefcase, Filter } from 'lucide-react';
 import { getContentWallIdeas, toggleIdeaPin, likeIdea, unlikeIdea, type Idea } from '@/services/ideasApi';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { IdeaDetailModal } from '@/components/common/IdeaDetailModal';
 import { AdminPinningSidebar } from '@/components/common/AdminPinningSidebar';
 import { DepartmentFilter } from '@/components/common/DepartmentFilter';
+import { StatusBadge, PriorityBadge } from '@/components/common/StatusBadge';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  IdeaStatus,
+  IdeaStatusLabels,
+  IdeaPriority,
+  IdeaPriorityLabels,
+} from '@/enums/ideaStatus';
 
 export const ContentWallPage: React.FC = () => {
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -23,6 +37,8 @@ export const ContentWallPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string | undefined>();
   const [selectedRole, setSelectedRole] = useState<string | undefined>();
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
+  const [selectedPriority, setSelectedPriority] = useState<string | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -56,6 +72,20 @@ export const ContentWallPage: React.FC = () => {
     // Role filter
     if (selectedRole) {
       if (!idea.custom_role_name || idea.custom_role_name !== getRoleName(selectedRole)) {
+        return false;
+      }
+    }
+    
+    // Status filter
+    if (selectedStatus) {
+      if (idea.status !== selectedStatus) {
+        return false;
+      }
+    }
+    
+    // Priority filter
+    if (selectedPriority) {
+      if (idea.priority !== selectedPriority) {
         return false;
       }
     }
@@ -124,6 +154,8 @@ export const ContentWallPage: React.FC = () => {
         const params = new URLSearchParams();
         if (selectedDepartment) params.append('department', selectedDepartment);
         if (selectedRole) params.append('role', selectedRole);
+        if (selectedStatus) params.append('status', selectedStatus);
+        if (selectedPriority) params.append('priority', selectedPriority);
         if (searchQuery.trim()) params.append('search', searchQuery.trim());
         
         const data = await getContentWallIdeas(params.toString());
@@ -144,7 +176,7 @@ export const ContentWallPage: React.FC = () => {
     const debounceTimer = setTimeout(loadIdeas, 300);
     
     return () => clearTimeout(debounceTimer);
-  }, [toast, selectedDepartment, selectedRole, searchQuery]);
+  }, [toast, selectedDepartment, selectedRole, selectedStatus, selectedPriority, searchQuery]);
 
   const handleTogglePin = async (id: string) => {
     try {
@@ -389,14 +421,65 @@ export const ContentWallPage: React.FC = () => {
 
         {/* Filters */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-          <DepartmentFilter
-            departments={getDepartmentStats()}
-            roles={getRoleStats()}
-            selectedDepartment={selectedDepartment}
-            selectedRole={selectedRole}
-            onDepartmentChange={setSelectedDepartment}
-            onRoleChange={setSelectedRole}
-          />
+          <div className="space-y-4">
+            <DepartmentFilter
+              departments={getDepartmentStats()}
+              roles={getRoleStats()}
+              selectedDepartment={selectedDepartment}
+              selectedRole={selectedRole}
+              onDepartmentChange={setSelectedDepartment}
+              onRoleChange={setSelectedRole}
+            />
+            
+            {/* Additional Filters */}
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">Additional Filters:</span>
+              </div>
+              
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="implemented">Implemented</SelectItem>
+                  <SelectItem value="testing">Testing</SelectItem>
+                  <SelectItem value="in_development">In Development</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Priorities</SelectItem>
+                  {Object.entries(IdeaPriorityLabels).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {(selectedStatus || selectedPriority) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedStatus(undefined);
+                    setSelectedPriority(undefined);
+                  }}
+                  className="text-sm"
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Content */}
@@ -522,12 +605,8 @@ export const ContentWallPage: React.FC = () => {
                             <Clock className="w-4 h-4" />
                             <span>{getRelativeTime(idea.created_at)}</span>
                           </div>
-                          <Badge 
-                            variant={idea.status === 'refined' ? 'default' : 'secondary'}
-                            className="capitalize"
-                          >
-                            {idea.status}
-                          </Badge>
+                          <StatusBadge status={idea.status} />
+                          <PriorityBadge priority={idea.priority} />
                         </div>
                       </div>
                     </div>

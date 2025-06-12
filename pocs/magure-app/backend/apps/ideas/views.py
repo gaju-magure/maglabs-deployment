@@ -9,6 +9,7 @@ from .serializers import (
     IdeaDetailSerializer,
     IdeaCreateSerializer,
     IdeaUpdateSerializer,
+    IdeaStatusUpdateSerializer,
 )
 from services.ai_services.openai_service import OpenAIService
 
@@ -17,11 +18,76 @@ class IdeaViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Users see only their own ideas; admins can see all
         user = self.request.user
-        if user.role in ['superadmin', 'tenant_admin']:
-            return Idea.objects.all()
-        return Idea.objects.filter(user=user)
+        queryset = Idea.objects.all()
+        
+        # Role-based filtering
+        if user.role == 'superadmin':
+            # Super admins can see all ideas
+            pass
+        elif user.role == 'tenant_admin':
+            # Tenant admins can see all ideas in their tenant
+            # (This would be filtered by tenant middleware in real multi-tenant setup)
+            pass
+        elif user.role == 'tenant_user':
+            # Tenant users can see:
+            # 1. Their own ideas (all statuses)
+            # 2. Ideas in approved/implemented/testing statuses from their department/role
+            queryset = queryset.filter(
+                models.Q(user=user) |  # Own ideas
+                models.Q(
+                    status__in=['approved', 'implemented', 'testing', 'in_development'],
+                    department=user.department
+                ) |
+                models.Q(
+                    status__in=['approved', 'implemented', 'testing', 'in_development'],
+                    custom_role=user.custom_role
+                )
+            ).distinct()
+        else:
+            # For any other roles, filter similarly to tenant_user
+            queryset = queryset.filter(
+                models.Q(user=user) |  # Own ideas
+                models.Q(
+                    status__in=['approved', 'implemented', 'testing', 'in_development'],
+                    department=user.department
+                ) |
+                models.Q(
+                    status__in=['approved', 'implemented', 'testing', 'in_development'],
+                    custom_role=user.custom_role
+                )
+            ).distinct()
+        
+        # Apply additional filters
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        priority_filter = self.request.query_params.get('priority')
+        if priority_filter:
+            queryset = queryset.filter(priority=priority_filter)
+        
+        assigned_to_filter = self.request.query_params.get('assigned_to')
+        if assigned_to_filter:
+            if assigned_to_filter == 'me':
+                queryset = queryset.filter(assigned_to=user)
+            elif assigned_to_filter == 'unassigned':
+                queryset = queryset.filter(assigned_to__isnull=True)
+            else:
+                try:
+                    queryset = queryset.filter(assigned_to_id=int(assigned_to_filter))
+                except (ValueError, TypeError):
+                    pass
+        
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                models.Q(title__icontains=search) |
+                models.Q(description__icontains=search) |
+                models.Q(implementation_notes__icontains=search)
+            )
+        
+        return queryset.order_by('-created_at')
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -47,44 +113,115 @@ class IdeaViewSet(viewsets.ModelViewSet):
         idea.is_pinned = not idea.is_pinned
         idea.save()
         
-        serializer = IdeaDetailSerializer(idea)
+        serializer = IdeaDetailSerializer(idea, context={'request': request})
         return Response(serializer.data)
+
+    @action(detail=True, methods=['patch'])
+    def update_status(self, request, pk=None):
+        """Update the status of an idea with proper validation"""
+        idea = self.get_object()
+        serializer = IdeaStatusUpdateSerializer(
+            idea, 
+            data=request.data, 
+            context={'request': request},
+            partial=True
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            response_serializer = IdeaDetailSerializer(idea, context={'request': request})
+            return Response(response_serializer.data)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'])
+    def analytics(self, request):
+        """Get idea analytics for dashboard"""
+        user = request.user
+        queryset = self.get_queryset()
+        
+        # Basic counts
+        analytics = {
+            'total_ideas': queryset.count(),
+            'by_status': {},
+            'by_priority': {},
+            'assigned_to_me': queryset.filter(assigned_to=user).count() if user.is_authenticated else 0,
+            'created_by_me': queryset.filter(user=user).count() if user.is_authenticated else 0,
+        }
+        
+        # Status breakdown
+        status_counts = queryset.values('status').annotate(count=models.Count('status'))
+        for item in status_counts:
+            analytics['by_status'][item['status']] = item['count']
+        
+        # Priority breakdown
+        priority_counts = queryset.values('priority').annotate(count=models.Count('priority'))
+        for item in priority_counts:
+            analytics['by_priority'][item['priority']] = item['count']
+        
+        return Response(analytics)
 
     @action(detail=False, methods=['get'])
     def content_wall(self, request):
-        # For content wall, show all refined ideas in the tenant
-        # Ordered by: pinned first, then by creation date (newest first)
-        queryset = Idea.objects.filter(status='refined').order_by('-is_pinned', '-created_at')
+        """
+        Content wall shows refined ideas that are visible to all users in the organization.
+        These are ideas that have been refined and approved for public viewing.
+        """
+        user = request.user
         
-        # Apply department filtering if specified
+        # Base queryset for content wall - refined ideas for public viewing
+        # Include 'refined' status which is the primary status for content wall
+        public_statuses = ['refined', 'approved', 'implemented', 'testing', 'in_development']
+        queryset = Idea.objects.filter(status__in=public_statuses)
+        
+        # Role-based filtering for content wall access
+        if user.role == 'superadmin':
+            # Super admins can see all public ideas across all tenants
+            pass
+        elif user.role == 'tenant_admin':
+            # Tenant admins can see all public ideas in their tenant
+            pass
+        elif user.role == 'tenant_user':
+            # Tenant users can see all refined/public ideas in their tenant
+            # The content wall is meant to be public within the tenant
+            pass
+        else:
+            # For any other roles, no additional filtering
+            pass
+        
+        # Apply filters
         department_id = request.query_params.get('department')
         if department_id and department_id != 'all':
             try:
                 queryset = queryset.filter(department_id=department_id)
             except ValueError:
-                pass  # Invalid department_id, ignore filter
+                pass
         
-        # Apply role filtering if specified
         role_id = request.query_params.get('role')
         if role_id and role_id != 'all':
             try:
                 queryset = queryset.filter(custom_role_id=role_id)
             except ValueError:
-                pass  # Invalid role_id, ignore filter
+                pass
         
-        # Apply search filtering if specified
+        status_filter = request.query_params.get('status')
+        if status_filter and status_filter != 'all' and status_filter in public_statuses:
+            queryset = queryset.filter(status=status_filter)
+        
+        priority_filter = request.query_params.get('priority')
+        if priority_filter:
+            queryset = queryset.filter(priority=priority_filter)
+        
         search = request.query_params.get('search')
         if search:
             queryset = queryset.filter(
-                models.Q(title__icontains=search) | 
-                models.Q(description__icontains=search)
+                models.Q(title__icontains=search) |
+                models.Q(description__icontains=search) |
+                models.Q(implementation_notes__icontains=search)
             )
         
-        # Apply tenant filtering if user is not superadmin
-        if request.user.role not in ['superadmin']:
-            # For tenant users, this will be automatically filtered by tenant
-            # due to django-tenants or similar multi-tenant setup
-            pass
+        # Order by: pinned first, then by priority (critical/high first), then by creation date
+        queryset = queryset.order_by('-is_pinned', '-priority', '-created_at')
         
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -154,12 +291,12 @@ class IdeaSubmitAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Create the idea with refined status
+        # Create the idea with submitted status (default workflow)
         idea = Idea.objects.create(
             user=request.user,
             title=title,
             description=description,
-            status='refined',
+            status='submitted',  # New default status
             department=request.user.department,
             custom_role=request.user.custom_role
         )

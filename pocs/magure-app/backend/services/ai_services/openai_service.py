@@ -16,7 +16,7 @@ class OpenAIService:
     def refine_idea(self, idea_text, conversation_history=None):
         prompt = self._build_refinement_prompt(idea_text, conversation_history)
         payload = {
-            "model": self.default_model,
+            "model": 'gpt-4o-mini',
             "messages": prompt,
             "temperature": 0.7,
             "max_tokens": 512,
@@ -24,18 +24,34 @@ class OpenAIService:
         }
 
         try:
-            print('Test Request: ', payload)
-            response = httpx.post(self.api_base_url, json=payload)
+            headers = {'Content-Type': 'application/json'}
+
+            # Log CURL command
+            curl_cmd = (
+                f"curl -X POST {self.api_base_url} "
+                f"-H 'Content-Type: application/json' "
+                f"-d '{json.dumps(payload)}'"
+            )
+            print("\n\nCURL command:\n\n%s", curl_cmd)
+            print("\n\n")
+
+            # Send request
+            response = httpx.post(self.api_base_url, json=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
-            print(data)
+
+            # Log full pretty-printed JSON response
+            pretty_json = json.dumps(data, indent=2)
+            print("\n\nFormatted JSON response:\n\n%s", pretty_json)
+
+            # Return parsed result
             if data.get("choices"):
                 return data["choices"][0]["message"]["content"]
             return "No valid response received."
         except Exception as e:
-            print(e)
             logger.error(f"Local API refinement error: {e}")
             return "Sorry, there was an error refining your idea. Please try again later."
+
 
     def score_idea(self, idea_text):
         prompt = (

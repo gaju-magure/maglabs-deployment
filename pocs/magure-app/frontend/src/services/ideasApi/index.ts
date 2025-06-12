@@ -3,8 +3,9 @@ import { getBaseUrl } from "@/lib/utils";
 export interface Idea {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   status: string;
+  priority: string;
   created_at: string;
   updated_at: string;
   user_email: string;
@@ -19,12 +20,46 @@ export interface Idea {
   is_pinned: boolean;
   like_count: number;
   is_liked: boolean;
+  assigned_to?: string;
+  assigned_to_name?: string;
+  estimated_effort?: string;
+  business_value?: string;
+  implementation_notes?: string;
+  rejection_reason?: string;
+  status_updated_at: string;
+  status_updated_by_name?: string;
+  can_edit: boolean;
+  can_change_status: boolean;
+  available_status_transitions?: Array<{value: string; label: string}>;
 }
 
 export interface CreateIdeaRequest {
   title: string;
   description: string;
-  status?: string;
+  priority?: string;
+}
+
+export interface UpdateIdeaRequest {
+  title?: string;
+  description?: string;
+  priority?: string;
+  estimated_effort?: string;
+  business_value?: string;
+  implementation_notes?: string;
+}
+
+export interface StatusUpdateRequest {
+  status: string;
+  assigned_to?: string;
+  notes?: string;
+}
+
+export interface IdeaAnalytics {
+  total_ideas: number;
+  by_status: Record<string, number>;
+  by_priority: Record<string, number>;
+  assigned_to_me: number;
+  created_by_me: number;
 }
 
 function getAuthHeaders(): HeadersInit {
@@ -58,7 +93,7 @@ export async function createIdea(data: CreateIdeaRequest): Promise<Idea> {
   return response.json();
 }
 
-export async function updateIdea(id: string, data: Partial<CreateIdeaRequest>): Promise<Idea> {
+export async function updateIdea(id: string, data: UpdateIdeaRequest): Promise<Idea> {
   const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/${id}/`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
@@ -149,6 +184,51 @@ export async function unlikeIdea(id: string): Promise<{message: string; idea: Id
   });
   if (!response.ok) {
     throw new Error('Failed to unlike idea');
+  }
+  return response.json();
+}
+
+export async function updateIdeaStatus(id: string, data: StatusUpdateRequest): Promise<Idea> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/${id}/update_status/`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update idea status');
+  }
+  return response.json();
+}
+
+export async function getIdeaAnalytics(): Promise<IdeaAnalytics> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/ideas/ideas/analytics/`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch idea analytics');
+  }
+  return response.json();
+}
+
+export async function getIdeasWithFilters(filters: {
+  status?: string;
+  priority?: string;
+  assigned_to?: string;
+  search?: string;
+}): Promise<Idea[]> {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) params.append(key, value);
+  });
+  
+  const url = `${getBaseUrl()}/api/v1/ideas/ideas/?${params.toString()}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch filtered ideas');
   }
   return response.json();
 }

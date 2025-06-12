@@ -140,6 +140,8 @@ export const UsersPage: React.FC = () => {
         onClose={closeCreateModal}
         mode="create"
         onSubmit={handleCreateUser}
+        departments={departments}
+        customRoles={customRoles}
       />
 
       {/* Edit User Modal */}
@@ -149,6 +151,8 @@ export const UsersPage: React.FC = () => {
         mode="edit"
         initialData={editingUser}
         onSubmit={handleUpdateUser}
+        departments={departments}
+        customRoles={customRoles}
       />
 
       {/* Delete Confirmation Dialog */}

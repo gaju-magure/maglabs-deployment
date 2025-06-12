@@ -4,6 +4,15 @@ import { CheckCircle, XCircle, Users, Building, Crown } from 'lucide-react';
 import { DataTableColumn } from '@/components/ui/data-table';
 import { Department } from '@/services/organizationApi';
 
+// User type for lookup
+interface User {
+  id: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
 const getStatusBadgeColor = (isActive: boolean) => {
   return isActive 
     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200'
@@ -17,7 +26,24 @@ const getDepartmentIcon = (dept: Department) => {
   return <Building className="w-4 h-4 sm:w-5 sm:h-5" />;
 };
 
-export const departmentColumns: DataTableColumn<Department>[] = [
+// Helper function to create department columns with user lookup
+export const createDepartmentColumns = (users: User[] = []): DataTableColumn<Department>[] => {
+  // Create user lookup map for quick access
+  const userLookup = users.reduce((acc, user) => {
+    acc[user.id] = user;
+    return acc;
+  }, {} as Record<string, User>);
+
+  // Helper function to get user display name
+  const getUserDisplayName = (userId: number): string => {
+    const user = userLookup[userId.toString()];
+    if (user) {
+      return `${user.first_name} ${user.last_name}`;
+    }
+    return `User ID: ${userId}`;
+  };
+
+  return [
   {
     key: 'name',
     label: 'Department',
@@ -79,7 +105,7 @@ export const departmentColumns: DataTableColumn<Department>[] = [
           <>
             <Crown className="w-4 h-4 text-yellow-600" />
             <span className="text-sm text-gray-700 dark:text-gray-300" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-              User ID: {dept.department_head}
+              {getUserDisplayName(dept.department_head)}
             </span>
           </>
         ) : (
@@ -126,3 +152,7 @@ export const departmentColumns: DataTableColumn<Department>[] = [
     )
   },
 ];
+};
+
+// Export the original departmentColumns for backward compatibility
+export const departmentColumns = createDepartmentColumns();

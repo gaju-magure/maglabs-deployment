@@ -30,6 +30,9 @@ interface UserModalProps {
     department_id?: number;
     custom_role_id?: number;
     avatar_url?: string;
+    // Support nested objects for edit mode
+    department?: { id: number; name: string };
+    custom_role?: { id: number; name: string };
   };
   onSubmit: (user: {
     username: string;
@@ -58,9 +61,13 @@ export const UserModal: React.FC<UserModalProps> = ({
 }) => {
   const { user: currentUser } = useAuth();
   
-  // Show profile fields only for tenant admins, not for superadmins
-  const showProfileFields = currentUser?.role === UserRole.TenantAdmin;
-  
+  // Helper function to extract ID from nested object or direct value
+  const extractId = (value: number | { id: number } | undefined): number | undefined => {
+    if (typeof value === 'number') return value;
+    if (value && typeof value === 'object' && 'id' in value) return value.id;
+    return undefined;
+  };
+
   const [formData, setFormData] = useState({
     username: initialData?.username || '',
     email: initialData?.email || '',
@@ -70,8 +77,9 @@ export const UserModal: React.FC<UserModalProps> = ({
     role: initialData?.role || (currentUser?.role === UserRole.SuperAdmin ? 'tenant_user' : ''),
     job_title: initialData?.job_title || '',
     phone_number: initialData?.phone_number || '',
-    department_id: initialData?.department_id || undefined,
-    custom_role_id: initialData?.custom_role_id || undefined,
+    // Extract IDs from either direct values or nested objects for initial data
+    department_id: extractId(initialData?.department_id) || extractId(initialData?.department) || undefined,
+    custom_role_id: extractId(initialData?.custom_role_id) || extractId(initialData?.custom_role) || undefined,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialData?.avatar_url || null);
@@ -88,8 +96,9 @@ export const UserModal: React.FC<UserModalProps> = ({
         role: initialData.role || '',
         job_title: initialData.job_title || '',
         phone_number: initialData.phone_number || '',
-        department_id: initialData.department_id || undefined,
-        custom_role_id: initialData.custom_role_id || undefined,
+        // Extract IDs from either direct values or nested objects
+        department_id: extractId(initialData.department_id) || extractId(initialData.department),
+        custom_role_id: extractId(initialData.custom_role_id) || extractId(initialData.custom_role),
       });
       setAvatarUrl(initialData.avatar_url || null);
     } else if (mode === 'create') {
@@ -115,7 +124,7 @@ export const UserModal: React.FC<UserModalProps> = ({
     setIsSubmitting(true);
     try {
       // Build submit data based on user role and mode
-      let submitData: any = {
+      const submitData: Record<string, unknown> = {
         username: formData.username,
         email: formData.email,
         first_name: formData.first_name,

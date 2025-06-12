@@ -6,7 +6,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { CustomRoleModal } from '@/components/common/CustomRoleModal';
 import { DepartmentModal } from '@/components/common/DepartmentModal';
 import { customRoleColumns } from '@/components/tables/columns/customRoleColumns';
-import { departmentColumns } from '@/components/tables/columns/departmentColumns';
+import { createDepartmentColumns } from '@/components/tables/columns/departmentColumns';
 import { useCustomRoleManagement } from '@/hooks/useCustomRoleManagement';
 import { useDepartmentManagement } from '@/hooks/useDepartmentManagement';
 import { useUserManagement } from '@/hooks/useUserManagement';
@@ -177,7 +177,7 @@ export const OrganizationPage: React.FC = () => {
 
               {/* Departments Table */}
               <DataTable
-                columns={departmentColumns}
+                columns={createDepartmentColumns(users)}
                 data={departments}
                 loading={deptsLoading}
                 searchQuery={deptsSearchQuery}

@@ -69,8 +69,14 @@ export const UsersPage: React.FC = () => {
           getCustomRoles()
         ]);
 
-        setDepartments(deptResponse.results || []);
-        setCustomRoles(roleResponse.results || []);
+        setDepartments(deptResponse.results.map(dept => ({ 
+          id: dept.id, 
+          name: dept.name 
+        })) || []);
+        setCustomRoles(roleResponse.results.map(role => ({ 
+          id: role.id, 
+          name: role.name 
+        })) || []);
       } catch (error) {
         console.error('Failed to fetch organization data:', error);
         toast({
@@ -100,6 +106,18 @@ export const UsersPage: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col">
+      {/* Loading Organization Data Banner */}
+      {isLoadingOrgData && currentUser?.role === UserRole.TenantAdmin && (
+        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-blue-700 dark:text-blue-300" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+              Loading departments and custom roles...
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Error Banner */}
       {error && (
         <div className="p-6">
@@ -132,6 +150,7 @@ export const UsersPage: React.FC = () => {
         getItemKey={(user) => user.id}
         actionHandlers={actionHandlers}
         className="flex-1"
+        disabled={isLoadingOrgData && currentUser?.role === UserRole.TenantAdmin}
       />
 
       {/* Create User Modal */}

@@ -272,8 +272,8 @@ export const ProfilePage: React.FC = () => {
           <CardHeader className="bg-gradient-to-r from-[#FDA052] to-[#B96AF7] text-white p-8">
             <div className="flex items-center gap-6">
               <AvatarUpload
-                currentAvatar={profile.avatar_url}
-                userName={`${profile.first_name} ${profile.last_name}`}
+                currentAvatar={profile.avatar_url || undefined}
+                userName={`${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User'}
                 userId={parseInt(profile.id)}
                 onUploadSuccess={(url) => setProfile(prev => prev ? { ...prev, avatar_url: url } : null)}
                 onDeleteSuccess={() => setProfile(prev => prev ? { ...prev, avatar_url: undefined } : null)}
@@ -281,13 +281,13 @@ export const ProfilePage: React.FC = () => {
               />
               <div className="flex-1">
                 <CardTitle className="text-2xl mb-2" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                  {profile.first_name} {profile.last_name}
+                  {`${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unnamed User'}
                 </CardTitle>
                 <div className="flex items-center gap-3 mb-4">
-                  <Badge className={`${getRoleBadgeColor(profile.role)} px-3 py-1`} style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                    {profile.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  <Badge className={`${getRoleBadgeColor(profile.role || 'tenant_user')} px-3 py-1`} style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                    {(profile.role || 'tenant_user').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </Badge>
-                  {profile.is_active ? (
+                  {(profile.is_active ?? true) ? (
                     <Badge variant="outline" className="border-white/30 text-white bg-white/10">
                       Active
                     </Badge>
@@ -298,7 +298,7 @@ export const ProfilePage: React.FC = () => {
                   )}
                 </div>
                 <p className="text-white/80" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                  @{profile.username}
+                  @{profile.username || 'username'}
                 </p>
               </div>
             </div>
@@ -313,7 +313,7 @@ export const ProfilePage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <EditableField
                   label="First Name"
-                  value={profile.first_name}
+                  value={profile.first_name || ''}
                   isEditing={editingField === 'first_name'}
                   onEdit={() => setEditingField('first_name')}
                   onSave={(value) => handleFieldUpdate('first_name', value)}
@@ -323,7 +323,7 @@ export const ProfilePage: React.FC = () => {
                 />
                 <EditableField
                   label="Last Name"
-                  value={profile.last_name}
+                  value={profile.last_name || ''}
                   isEditing={editingField === 'last_name'}
                   onEdit={() => setEditingField('last_name')}
                   onSave={(value) => handleFieldUpdate('last_name', value)}
@@ -333,7 +333,7 @@ export const ProfilePage: React.FC = () => {
                 />
                 <EditableField
                   label="Username"
-                  value={profile.username}
+                  value={profile.username || ''}
                   isEditing={editingField === 'username'}
                   onEdit={() => setEditingField('username')}
                   onSave={(value) => handleFieldUpdate('username', value)}
@@ -343,7 +343,7 @@ export const ProfilePage: React.FC = () => {
                 />
                 <EditableField
                   label="Email Address"
-                  value={profile.email}
+                  value={profile.email || ''}
                   isEditing={editingField === 'email'}
                   onEdit={() => setEditingField('email')}
                   onSave={(value) => handleFieldUpdate('email', value)}

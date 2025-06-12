@@ -24,12 +24,12 @@ export interface UpdateUserRequest {
 
 export interface UserProfile {
   id: string;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-  is_active: boolean;
+  username?: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  role?: string;
+  is_active?: boolean;
   profile?: {
     job_title?: string;
     department?: {

@@ -305,23 +305,63 @@ export const AdminPinningSidebar: React.FC<AdminPinningSidebarProps> = ({
                 </Card>
               ))}
               
-              {/* Quick Stats */}
+              {/* Analytics */}
               <Separator className="my-4" />
               
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
                 <h4 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                  Quick Stats
+                  Analytics Overview
                 </h4>
+                
+                {/* Quick Stats */}
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="text-center">
-                    <div className="text-lg font-bold text-gray-900 dark:text-white">{pinnedIdeas.length}</div>
+                    <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{pinnedIdeas.length}</div>
                     <div className="text-gray-500 dark:text-gray-400">Pinned</div>
                   </div>
                   <div className="text-center">
                     <div className="text-lg font-bold text-gray-900 dark:text-white">{allIdeas.length}</div>
-                    <div className="text-gray-500 dark:text-gray-400">Total</div>
+                    <div className="text-gray-500 dark:text-gray-400">Total Ideas</div>
                   </div>
                 </div>
+                
+                {/* Engagement Stats */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-red-500 dark:text-red-400">
+                      {allIdeas.reduce((sum, idea) => sum + idea.like_count, 0)}
+                    </div>
+                    <div className="text-gray-500 dark:text-gray-400">Total Likes</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                      {Math.round(allIdeas.reduce((sum, idea) => sum + idea.like_count, 0) / Math.max(allIdeas.length, 1) * 10) / 10}
+                    </div>
+                    <div className="text-gray-500 dark:text-gray-400">Avg Likes</div>
+                  </div>
+                </div>
+                
+                {/* Most Active Department */}
+                {(() => {
+                  const departments: { [key: string]: number } = {};
+                  allIdeas.forEach(idea => {
+                    if (idea.department_name) {
+                      departments[idea.department_name] = (departments[idea.department_name] || 0) + 1;
+                    }
+                  });
+                  const topDept = Object.entries(departments).sort((a, b) => b[1] - a[1])[0];
+                  
+                  return topDept ? (
+                    <div className="text-center p-2 bg-white dark:bg-gray-700 rounded border">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Most Active</div>
+                      <div className="flex items-center justify-center gap-1">
+                        <Building2 className="w-3 h-3 text-blue-500" />
+                        <span className="text-xs font-medium text-gray-900 dark:text-white">{topDept[0]}</span>
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{topDept[1]} ideas</div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </div>
           )}

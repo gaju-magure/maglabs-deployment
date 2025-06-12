@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import Idea, IdeaLike
+from .models import Idea, IdeaLike, ChatSession, ChatMessage, ChatTemplate
 from apps.tenants.models import TenantDepartment, TenantRole
+from django.db import models
 
 class IdeaListSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
@@ -243,3 +244,176 @@ class IdeaStatusUpdateSerializer(serializers.ModelSerializer):
                 instance.save()
         
         return instance
+
+
+# Chat Serializers
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    """Serializer for chat messages with formatted timestamps"""
+    
+    formatted_time = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ChatMessage
+        fields = [
+            'id', 'role', 'content', 'message_type', 
+            'ai_metadata', 'sequence_number', 'created_at',
+            'formatted_time', 'is_processed', 'processing_status'
+        ]
+        read_only_fields = ['id', 'sequence_number', 'created_at', 'formatted_time']
+    
+    def get_formatted_time(self, obj):
+        """Return human-readable timestamp"""
+        return obj.created_at.strftime("%I:%M %p")
+
+
+class ChatSessionListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for session lists"""
+    
+    message_count = serializers.IntegerField(read_only=True)
+    last_message_preview = serializers.SerializerMethodField()
+    time_ago = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ChatSession
+        fields = [
+            'id', 'title', 'conversation_type', 'status',
+            'message_count', 'last_message_preview', 'time_ago',
+            'is_idea_submitted', 'last_activity_at', 'created_at'
+        ]
+    
+    def get_last_message_preview(self, obj):
+        """Get preview of last user message"""
+        last_msg = obj.messages.filter(role='user').last()
+        if last_msg:
+            content = last_msg.content
+            return content[:80] + "..." if len(content) > 80 else content
+        return "No messages yet"
+    
+    def get_time_ago(self, obj):
+        """Return relative time like '2 hours ago'"""
+        from django.utils.timesince import timesince
+        return timesince(obj.last_activity_at) + " ago"
+
+
+class ChatSessionDetailSerializer(serializers.ModelSerializer):
+    """Full serializer with messages for session detail view"""
+    
+    messages = ChatMessageSerializer(many=True, read_only=True)
+    submitted_idea_details = serializers.SerializerMethodField()
+    can_submit_idea = serializers.BooleanField(read_only=True)
+    
+    class Meta:
+        model = ChatSession
+        fields = [
+            'id', 'title', 'conversation_type', 'status',
+            'system_prompt', 'ai_model', 'context_metadata',
+            'messages', 'submitted_idea_details', 'can_submit_idea',
+            'is_idea_submitted', 'message_count', 'total_tokens_used',
+            'created_at', 'updated_at', 'last_activity_at', 'ai_metadata'
+        ]
+    
+    def get_submitted_idea_details(self, obj):
+        """Return details of submitted idea if exists"""
+        if obj.submitted_idea:
+            return IdeaListSerializer(obj.submitted_idea, context=self.context).data
+        return None
+
+
+class ChatSessionCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating new chat sessions"""
+    
+    template_id = serializers.UUIDField(required=False, write_only=True)
+    
+    class Meta:
+        model = ChatSession
+        fields = ['title', 'conversation_type', 'template_id']
+    
+    def create(self, validated_data):
+        template_id = validated_data.pop('template_id', None)
+        user = self.context['request'].user
+        
+        # Build context metadata
+        context_metadata = {
+            'user_role': user.role,
+            'user_name': user.get_full_name() or user.username,
+            'department': user.department.name if user.department else None,
+            'department_id': user.department.id if user.department else None,
+            'custom_role': user.custom_role.name if user.custom_role else None,
+            'custom_role_id': user.custom_role.id if user.custom_role else None,
+        }
+        
+        # Create session
+        session = ChatSession.objects.create(
+            user=user,
+            context_metadata=context_metadata,
+            **validated_data
+        )
+        
+        # If template provided, create initial message
+        if template_id:
+            try:
+                template = ChatTemplate.objects.get(id=template_id, is_active=True)
+                if template.system_prompt_override:
+                    session.system_prompt = template.system_prompt_override
+                    session.save()
+                
+                # Create initial user message from template
+                ChatMessage.objects.create(
+                    session=session,
+                    role='user',
+                    content=template.initial_prompt,
+                    message_type='text',
+                    sequence_number=1
+                )
+                session.message_count = 1
+                session.save()
+            except ChatTemplate.DoesNotExist:
+                pass
+        
+        return session
+
+
+class SendMessageSerializer(serializers.Serializer):
+    """Serializer for sending messages in a chat session"""
+    
+    content = serializers.CharField()
+    message_type = serializers.ChoiceField(
+        choices=['text', 'idea_draft', 'question'],
+        default='text'
+    )
+    
+    def validate_content(self, value):
+        """Ensure message is not empty"""
+        if not value.strip():
+            raise serializers.ValidationError("Message cannot be empty")
+        return value.strip()
+
+
+class SubmitIdeaFromChatSerializer(serializers.Serializer):
+    """Serializer for converting chat to idea"""
+    
+    title = serializers.CharField(max_length=255)
+    description = serializers.CharField()
+    priority = serializers.ChoiceField(
+        choices=['low', 'medium', 'high', 'critical'],
+        default='medium'
+    )
+    
+    def validate(self, data):
+        """Ensure session hasn't already submitted an idea"""
+        session = self.context['session']
+        if session.is_idea_submitted:
+            raise serializers.ValidationError("This chat has already been submitted as an idea")
+        return data
+
+
+class ChatTemplateSerializer(serializers.ModelSerializer):
+    """Serializer for chat templates"""
+    
+    class Meta:
+        model = ChatTemplate
+        fields = [
+            'id', 'name', 'description', 'conversation_type', 
+            'initial_prompt', 'department', 'created_at'
+        ]

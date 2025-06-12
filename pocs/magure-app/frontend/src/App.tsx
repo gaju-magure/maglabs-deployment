@@ -11,7 +11,6 @@ import { Login } from "@/pages/Login";
 import { TenantsPage } from "@/pages/Dashboard/TenantsPage";
 import { UsersPage } from "@/pages/Dashboard/UsersPage";
 import { ContentWallPage } from "@/pages/Dashboard/ContentWallPage";
-import { IdeasPage } from "@/pages/Dashboard/IdeasPage";
 import { ChatPage } from "@/pages/Dashboard/ChatPage";
 import { OrganizationPage } from "@/pages/Dashboard/OrganizationPage";
 import { TenantOnboarding } from "@/pages/TenantOnboarding";
@@ -63,7 +62,6 @@ const RoleAwareDashboardRoutes = () => {
             <Route path="content" element={<ContentWallPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="organization" element={<OrganizationPage />} />
-            <Route path="ideas" element={<IdeasPage />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="chat/:sessionId" element={<ChatPage />} />
             <Route path="*" element={<Navigate to="/dashboard/content" replace />} />
@@ -75,7 +73,6 @@ const RoleAwareDashboardRoutes = () => {
           <>
             <Route path="chat" element={<ChatPage />} />
             <Route path="chat/:sessionId" element={<ChatPage />} />
-            <Route path="ideas" element={<IdeasPage />} />
             <Route path="content" element={<ContentWallPage />} />
             <Route path="*" element={<Navigate to="/dashboard/chat" replace />} />
           </>

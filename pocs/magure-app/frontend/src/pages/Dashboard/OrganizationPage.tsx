@@ -3,10 +3,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertBanner } from '@/components/ui/alert-banner';
 import { DataTable } from '@/components/ui/data-table';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { CustomRoleModal } from '@/components/common/CustomRoleModal';
+import { DepartmentModal } from '@/components/common/DepartmentModal';
 import { customRoleColumns } from '@/components/tables/columns/customRoleColumns';
 import { departmentColumns } from '@/components/tables/columns/departmentColumns';
 import { useCustomRoleManagement } from '@/hooks/useCustomRoleManagement';
 import { useDepartmentManagement } from '@/hooks/useDepartmentManagement';
+import { useUserManagement } from '@/hooks/useUserManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/enums/userRole';
 import { Trash2, Building, Shield } from 'lucide-react';
@@ -14,6 +17,9 @@ import { Trash2, Building, Shield } from 'lucide-react';
 export const OrganizationPage: React.FC = () => {
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('roles');
+
+  // Get users for department head selection
+  const { users } = useUserManagement();
 
   // Custom roles management
   const {
@@ -191,6 +197,43 @@ export const OrganizationPage: React.FC = () => {
           </Tabs>
         </div>
       </div>
+
+      {/* Create/Edit Modals */}
+      {/* Custom Role Modal */}
+      <CustomRoleModal
+        isOpen={isCreateRoleModalOpen}
+        onClose={closeCreateRoleModal}
+        mode="create"
+        onSubmit={handleCreateCustomRole}
+      />
+
+      <CustomRoleModal
+        isOpen={isEditRoleModalOpen}
+        onClose={closeEditRoleModal}
+        mode="edit"
+        initialData={editingRole}
+        onSubmit={handleUpdateCustomRole}
+      />
+
+      {/* Department Modal */}
+      <DepartmentModal
+        isOpen={isCreateDeptModalOpen}
+        onClose={closeCreateDeptModal}
+        mode="create"
+        onSubmit={handleCreateDepartment}
+        departments={departments}
+        users={users}
+      />
+
+      <DepartmentModal
+        isOpen={isEditDeptModalOpen}
+        onClose={closeEditDeptModal}
+        mode="edit"
+        initialData={editingDepartment}
+        onSubmit={handleUpdateDepartment}
+        departments={departments}
+        users={users}
+      />
 
       {/* Delete Confirmation Dialogs */}
       {/* Custom Role Delete Dialog */}

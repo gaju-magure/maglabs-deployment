@@ -59,20 +59,12 @@ export const IdeaDetailModal: React.FC<IdeaDetailModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+      <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto border-0 shadow-2xl" style={{ fontFamily: 'Satoshi, sans-serif' }}>
         {/* Header */}
-        <DialogHeader className="relative pb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="absolute right-0 top-0 h-8 w-8 p-0"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+        <DialogHeader className="relative pb-6 border-b border-gray-100 dark:border-gray-800">
           
-          <div className="flex flex-col sm:flex-row items-start gap-4 pr-8">
-            <Avatar className="w-12 h-12 sm:w-16 sm:h-16 ring-2 ring-gray-200 dark:ring-gray-700">
+          <div className="flex flex-col sm:flex-row items-start gap-4">
+            <Avatar className="w-12 h-12 sm:w-16 sm:h-16 ring-2 ring-offset-2 ring-blue-200 dark:ring-blue-800 shadow-lg">
               <AvatarFallback className="bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 text-blue-700 dark:text-blue-300 text-sm sm:text-lg font-semibold">
                 {getAuthorInitials(idea.user_email)}
               </AvatarFallback>
@@ -81,10 +73,10 @@ export const IdeaDetailModal: React.FC<IdeaDetailModalProps> = ({
             <div className="flex-1 min-w-0 w-full">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="flex-1">
-                  <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2 leading-tight">
+                  <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-2 leading-tight">
                     {idea.title}
                     {idea.is_pinned && (
-                      <Pin className="inline-block w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 ml-2 fill-current" />
+                      <Pin className="inline-block w-4 h-4 sm:w-5 sm:h-5 text-amber-500 ml-2 fill-current" />
                     )}
                   </DialogTitle>
                   
@@ -99,7 +91,7 @@ export const IdeaDetailModal: React.FC<IdeaDetailModalProps> = ({
                     </div>
                     <Badge 
                       variant={idea.status === 'refined' ? 'default' : 'secondary'}
-                      className="capitalize w-fit"
+                      className="capitalize w-fit bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 dark:from-blue-900/20 dark:to-purple-900/20 dark:text-blue-300 border-blue-200 dark:border-blue-800"
                     >
                       {idea.status}
                     </Badge>
@@ -112,10 +104,10 @@ export const IdeaDetailModal: React.FC<IdeaDetailModalProps> = ({
                     size="sm"
                     onClick={() => onPin(idea.id)}
                     disabled={isPinning}
-                    className={`transition-all duration-200 ${
+                    className={`transition-all duration-200 rounded-lg shadow-sm ${
                       idea.is_pinned 
-                        ? 'text-yellow-600 hover:text-yellow-700 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30' 
-                        : 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/10'
+                        ? 'text-amber-600 hover:text-amber-700 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 shadow-amber-200' 
+                        : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/10'
                     }`}
                   >
                     {isPinning ? (
@@ -134,8 +126,11 @@ export const IdeaDetailModal: React.FC<IdeaDetailModalProps> = ({
 
         {/* Content */}
         <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Description</h3>
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-900/50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              Description
+            </h3>
             <div className="prose prose-gray dark:prose-invert max-w-none">
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                 {idea.description}
@@ -147,16 +142,22 @@ export const IdeaDetailModal: React.FC<IdeaDetailModalProps> = ({
 
           {/* Metadata */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Created</h4>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-green-600 dark:text-green-400" />
+                Created
+              </h4>
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Calendar className="w-4 h-4" />
                 <span>{formatDate(idea.created_at)}</span>
               </div>
             </div>
             
-            <div>
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Last Updated</h4>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                Last Updated
+              </h4>
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Calendar className="w-4 h-4" />
                 <span>{formatDate(idea.updated_at)}</span>
@@ -167,33 +168,35 @@ export const IdeaDetailModal: React.FC<IdeaDetailModalProps> = ({
           <Separator />
 
           {/* Engagement Actions */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onLike(idea.id, idea.is_liked)}
-                disabled={isLiking}
-                className={`flex items-center gap-2 transition-all duration-200 ${
-                  idea.is_liked 
-                    ? 'text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30' 
-                    : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'
-                }`}
-              >
-                {isLiking ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Heart className={`w-4 h-4 ${idea.is_liked ? 'fill-current' : ''}`} />
-                )}
-                <span className="text-sm font-medium">
-                  {idea.like_count} {idea.like_count === 1 ? 'like' : 'likes'}
-                </span>
-              </Button>
+          <div className="bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/10 dark:to-pink-900/10 rounded-lg p-4 border border-red-100 dark:border-red-900/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onLike(idea.id, idea.is_liked)}
+                  disabled={isLiking}
+                  className={`flex items-center gap-2 transition-all duration-200 rounded-lg shadow-sm ${
+                    idea.is_liked 
+                      ? 'text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/40 shadow-red-200' 
+                      : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'
+                  }`}
+                >
+                  {isLiking ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Heart className={`w-4 h-4 ${idea.is_liked ? 'fill-current' : ''}`} />
+                  )}
+                  <span className="text-sm font-medium">
+                    {idea.like_count} {idea.like_count === 1 ? 'like' : 'likes'}
+                  </span>
+                </Button>
+              </div>
+              
+              <DialogDescription className="text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded border">
+                ID: {idea.id}
+              </DialogDescription>
             </div>
-            
-            <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
-              ID: {idea.id}
-            </DialogDescription>
           </div>
         </div>
       </DialogContent>

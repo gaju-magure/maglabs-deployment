@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Shield, Plus } from 'lucide-react';
 import { CustomRole, CreateCustomRoleRequest, UpdateCustomRoleRequest } from '@/services/organizationApi';
 
@@ -21,47 +20,6 @@ interface CustomRoleModalProps {
   initialData?: CustomRole | null;
   onSubmit: (data: CreateCustomRoleRequest | UpdateCustomRoleRequest) => Promise<void>;
 }
-
-// Predefined permissions structure
-const PERMISSION_CATEGORIES = {
-  user_management: {
-    label: 'User Management',
-    permissions: {
-      create_users: 'Create Users',
-      edit_users: 'Edit Users',
-      delete_users: 'Delete Users',
-      view_users: 'View Users',
-    },
-  },
-  department_management: {
-    label: 'Department Management',
-    permissions: {
-      create_departments: 'Create Departments',
-      edit_departments: 'Edit Departments',
-      delete_departments: 'Delete Departments',
-      view_departments: 'View Departments',
-    },
-  },
-  role_management: {
-    label: 'Role Management',
-    permissions: {
-      create_roles: 'Create Roles',
-      edit_roles: 'Edit Roles',
-      delete_roles: 'Delete Roles',
-      view_roles: 'View Roles',
-    },
-  },
-  content_management: {
-    label: 'Content Management',
-    permissions: {
-      create_content: 'Create Content',
-      edit_content: 'Edit Content',
-      delete_content: 'Delete Content',
-      view_content: 'View Content',
-      publish_content: 'Publish Content',
-    },
-  },
-};
 
 export const CustomRoleModal: React.FC<CustomRoleModalProps> = ({
   isOpen,
@@ -74,7 +32,6 @@ export const CustomRoleModal: React.FC<CustomRoleModalProps> = ({
     name: '',
     description: '',
     is_active: true,
-    permissions: {} as Record<string, boolean>,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -85,14 +42,12 @@ export const CustomRoleModal: React.FC<CustomRoleModalProps> = ({
         name: initialData.name || '',
         description: initialData.description || '',
         is_active: initialData.is_active ?? true,
-        permissions: initialData.permissions as Record<string, boolean> || {},
       });
     } else if (mode === 'create') {
       setFormData({
         name: '',
         description: '',
         is_active: true,
-        permissions: {},
       });
     }
   }, [mode, initialData]);
@@ -106,7 +61,6 @@ export const CustomRoleModal: React.FC<CustomRoleModalProps> = ({
         name: formData.name,
         description: formData.description,
         is_active: formData.is_active,
-        permissions: formData.permissions,
       };
 
       await onSubmit(submitData);
@@ -118,44 +72,10 @@ export const CustomRoleModal: React.FC<CustomRoleModalProps> = ({
     }
   };
 
-  const handlePermissionChange = (permission: string, checked: boolean) => {
-    setFormData({
-      ...formData,
-      permissions: {
-        ...formData.permissions,
-        [permission]: checked,
-      },
-    });
-  };
-
-  const handleCategoryChange = (category: string, checked: boolean) => {
-    const categoryPermissions = Object.keys(PERMISSION_CATEGORIES[category as keyof typeof PERMISSION_CATEGORIES].permissions);
-    const updatedPermissions = { ...formData.permissions };
-    
-    categoryPermissions.forEach(permission => {
-      updatedPermissions[permission] = checked;
-    });
-
-    setFormData({
-      ...formData,
-      permissions: updatedPermissions,
-    });
-  };
-
-  const isCategoryChecked = (category: string) => {
-    const categoryPermissions = Object.keys(PERMISSION_CATEGORIES[category as keyof typeof PERMISSION_CATEGORIES].permissions);
-    return categoryPermissions.every(permission => formData.permissions[permission]);
-  };
-
-  const isCategoryIndeterminate = (category: string) => {
-    const categoryPermissions = Object.keys(PERMISSION_CATEGORIES[category as keyof typeof PERMISSION_CATEGORIES].permissions);
-    const checkedCount = categoryPermissions.filter(permission => formData.permissions[permission]).length;
-    return checkedCount > 0 && checkedCount < categoryPermissions.length;
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#3077F3] to-[#41E6F8] flex items-center justify-center">
@@ -172,8 +92,8 @@ export const CustomRoleModal: React.FC<CustomRoleModalProps> = ({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col max-h-[80vh]">
-          <div className="flex-1 overflow-y-auto space-y-5 pr-2">
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="space-y-6 overflow-y-auto max-h-[60vh] scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
             <div className="space-y-2">
               <Label htmlFor="name" style={{ fontFamily: 'Satoshi, sans-serif' }}>Role Name</Label>
               <Input
@@ -221,53 +141,9 @@ export const CustomRoleModal: React.FC<CustomRoleModalProps> = ({
               />
             </div>
 
-            <div className="space-y-4">
-              <Label style={{ fontFamily: 'Satoshi, sans-serif' }}>Permissions</Label>
-              <div className="space-y-4">
-                {Object.entries(PERMISSION_CATEGORIES).map(([categoryKey, category]) => (
-                  <div key={categoryKey} className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`category-${categoryKey}`}
-                        checked={isCategoryChecked(categoryKey)}
-                        onCheckedChange={(checked) => handleCategoryChange(categoryKey, checked as boolean)}
-                        disabled={isSubmitting}
-                        {...(isCategoryIndeterminate(categoryKey) && { 'data-state': 'indeterminate' })}
-                      />
-                      <Label
-                        htmlFor={`category-${categoryKey}`}
-                        className="text-sm font-medium cursor-pointer"
-                        style={{ fontFamily: 'Satoshi, sans-serif' }}
-                      >
-                        {category.label}
-                      </Label>
-                    </div>
-                    <div className="ml-6 space-y-2">
-                      {Object.entries(category.permissions).map(([permissionKey, permissionLabel]) => (
-                        <div key={permissionKey} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={permissionKey}
-                            checked={formData.permissions[permissionKey] || false}
-                            onCheckedChange={(checked) => handlePermissionChange(permissionKey, checked as boolean)}
-                            disabled={isSubmitting}
-                          />
-                          <Label
-                            htmlFor={permissionKey}
-                            className="text-sm cursor-pointer text-gray-600 dark:text-gray-400"
-                            style={{ fontFamily: 'Satoshi, sans-serif' }}
-                          >
-                            {permissionLabel}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky bottom-0">
+          <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
             <Button
               type="button"
               variant="outline"

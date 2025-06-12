@@ -114,7 +114,7 @@ export const DepartmentModal: React.FC<DepartmentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#B96AF7] to-[#FDA052] flex items-center justify-center">
@@ -131,7 +131,8 @@ export const DepartmentModal: React.FC<DepartmentModalProps> = ({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 mt-6">
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="space-y-6 overflow-y-auto max-h-[60vh] scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
           <div className="space-y-2">
             <Label htmlFor="name" style={{ fontFamily: 'Satoshi, sans-serif' }}>Department Name</Label>
             <Input
@@ -224,7 +225,8 @@ export const DepartmentModal: React.FC<DepartmentModalProps> = ({
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+          </div>
+          <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
             <Button
               type="button"
               variant="outline"

@@ -219,7 +219,7 @@ export async function getIdeasWithFilters(filters: {
 }): Promise<Idea[]> {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    if (value) params.append(key, value);
+    if (value && value !== 'all') params.append(key, value);
   });
   
   const url = `${getBaseUrl()}/api/v1/ideas/ideas/?${params.toString()}`;

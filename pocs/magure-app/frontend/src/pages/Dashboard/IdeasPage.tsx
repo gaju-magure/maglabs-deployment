@@ -42,9 +42,9 @@ export const IdeasPage: React.FC = () => {
   // Filters
   const [filters, setFilters] = useState({
     search: '',
-    status: '',
-    priority: '',
-    assigned_to: '',
+    status: 'all',
+    priority: 'all',
+    assigned_to: 'all',
   });
 
   const loadIdeas = async () => {
@@ -92,9 +92,9 @@ export const IdeasPage: React.FC = () => {
   const clearFilters = () => {
     setFilters({
       search: '',
-      status: '',
-      priority: '',
-      assigned_to: '',
+      status: 'all',
+      priority: 'all',
+      assigned_to: 'all',
     });
   };
 
@@ -222,7 +222,7 @@ export const IdeasPage: React.FC = () => {
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
                 {Object.entries(IdeaStatusLabels).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
@@ -239,7 +239,7 @@ export const IdeasPage: React.FC = () => {
                 <SelectValue placeholder="Filter by priority" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Priorities</SelectItem>
+                <SelectItem value="all">All Priorities</SelectItem>
                 {Object.entries(IdeaPriorityLabels).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
@@ -256,13 +256,13 @@ export const IdeasPage: React.FC = () => {
                 <SelectValue placeholder="Filter by assignee" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Assignees</SelectItem>
+                <SelectItem value="all">All Assignees</SelectItem>
                 <SelectItem value="me">Assigned to Me</SelectItem>
                 <SelectItem value="unassigned">Unassigned</SelectItem>
               </SelectContent>
             </Select>
 
-            {(filters.search || filters.status || filters.priority || filters.assigned_to) && (
+            {(filters.search || (filters.status !== 'all') || (filters.priority !== 'all') || (filters.assigned_to !== 'all')) && (
               <Button variant="outline" onClick={clearFilters}>
                 <Filter className="h-4 w-4 mr-2" />
                 Clear Filters

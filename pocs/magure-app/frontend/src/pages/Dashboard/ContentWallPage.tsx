@@ -77,14 +77,14 @@ export const ContentWallPage: React.FC = () => {
     }
     
     // Status filter
-    if (selectedStatus) {
+    if (selectedStatus && selectedStatus !== 'all') {
       if (idea.status !== selectedStatus) {
         return false;
       }
     }
     
     // Priority filter
-    if (selectedPriority) {
+    if (selectedPriority && selectedPriority !== 'all') {
       if (idea.priority !== selectedPriority) {
         return false;
       }
@@ -154,8 +154,8 @@ export const ContentWallPage: React.FC = () => {
         const params = new URLSearchParams();
         if (selectedDepartment) params.append('department', selectedDepartment);
         if (selectedRole) params.append('role', selectedRole);
-        if (selectedStatus) params.append('status', selectedStatus);
-        if (selectedPriority) params.append('priority', selectedPriority);
+        if (selectedStatus && selectedStatus !== 'all') params.append('status', selectedStatus);
+        if (selectedPriority && selectedPriority !== 'all') params.append('priority', selectedPriority);
         if (searchQuery.trim()) params.append('search', searchQuery.trim());
         
         const data = await getContentWallIdeas(params.toString());
@@ -443,7 +443,7 @@ export const ContentWallPage: React.FC = () => {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="implemented">Implemented</SelectItem>
                   <SelectItem value="testing">Testing</SelectItem>
@@ -456,7 +456,7 @@ export const ContentWallPage: React.FC = () => {
                   <SelectValue placeholder="Filter by priority" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Priorities</SelectItem>
+                  <SelectItem value="all">All Priorities</SelectItem>
                   {Object.entries(IdeaPriorityLabels).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
@@ -465,13 +465,13 @@ export const ContentWallPage: React.FC = () => {
                 </SelectContent>
               </Select>
 
-              {(selectedStatus || selectedPriority) && (
+              {((selectedStatus && selectedStatus !== 'all') || (selectedPriority && selectedPriority !== 'all')) && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setSelectedStatus(undefined);
-                    setSelectedPriority(undefined);
+                    setSelectedStatus('all');
+                    setSelectedPriority('all');
                   }}
                   className="text-sm"
                 >

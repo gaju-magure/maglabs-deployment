@@ -52,6 +52,7 @@ export const Navbar: React.FC = () => {
       case UserRole.TenantUser:
         return [
           { to: '/dashboard/ideas', label: 'Idea Submission' },
+          { to: '/dashboard/content', label: 'Content Wall' },
         ];
       default:
         return [];

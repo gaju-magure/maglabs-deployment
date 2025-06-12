@@ -71,6 +71,7 @@ const RoleAwareDashboardRoutes = () => {
         {user.role === "tenant_user" && (
           <>
             <Route path="ideas" element={<IdeasPage />} />
+            <Route path="content" element={<ContentWallPage />} />
             <Route path="*" element={<Navigate to="/dashboard/ideas" replace />} />
           </>
         )}

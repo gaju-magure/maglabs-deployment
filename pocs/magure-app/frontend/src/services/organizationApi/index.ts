@@ -104,7 +104,16 @@ export async function createCustomRole(roleData: CreateCustomRoleRequest): Promi
   });
 
   if (!response.ok) {
-    throw new Error('Failed to create custom role');
+    const errorData = await response.json().catch(() => ({}));
+    
+    // Handle validation errors
+    if (response.status === 400 && errorData.name) {
+      throw new Error(errorData.name[0] || 'Invalid role name');
+    }
+    
+    // Handle other errors
+    const errorMessage = errorData.detail || errorData.error || 'Failed to create custom role';
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -118,7 +127,16 @@ export async function updateCustomRole(roleId: number, roleData: UpdateCustomRol
   });
 
   if (!response.ok) {
-    throw new Error('Failed to update custom role');
+    const errorData = await response.json().catch(() => ({}));
+    
+    // Handle validation errors
+    if (response.status === 400 && errorData.name) {
+      throw new Error(errorData.name[0] || 'Invalid role name');
+    }
+    
+    // Handle other errors
+    const errorMessage = errorData.detail || errorData.error || 'Failed to update custom role';
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -170,7 +188,16 @@ export async function createDepartment(deptData: CreateDepartmentRequest): Promi
   });
 
   if (!response.ok) {
-    throw new Error('Failed to create department');
+    const errorData = await response.json().catch(() => ({}));
+    
+    // Handle validation errors
+    if (response.status === 400 && errorData.name) {
+      throw new Error(errorData.name[0] || 'Invalid department name');
+    }
+    
+    // Handle other errors
+    const errorMessage = errorData.detail || errorData.error || 'Failed to create department';
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -184,7 +211,16 @@ export async function updateDepartment(deptId: number, deptData: UpdateDepartmen
   });
 
   if (!response.ok) {
-    throw new Error('Failed to update department');
+    const errorData = await response.json().catch(() => ({}));
+    
+    // Handle validation errors
+    if (response.status === 400 && errorData.name) {
+      throw new Error(errorData.name[0] || 'Invalid department name');
+    }
+    
+    // Handle other errors
+    const errorMessage = errorData.detail || errorData.error || 'Failed to update department';
+    throw new Error(errorMessage);
   }
 
   return response.json();

@@ -81,6 +81,33 @@ class DepartmentSerializer(serializers.ModelSerializer):
     
     def get_member_count(self, obj):
         return obj.members.count()
+    
+    def validate_name(self, value):
+        """Validate that department name is unique within the tenant"""
+        request = self.context.get('request')
+        if not request:
+            return value
+            
+        tenant = getattr(request, 'tenant', None)
+        if not tenant:
+            return value
+        
+        # Check for existing department with same name in the same tenant
+        queryset = TenantDepartment.objects.filter(
+            tenant=tenant,
+            name__iexact=value  # Case-insensitive check
+        )
+        
+        # If updating an existing department, exclude it from the check
+        if self.instance:
+            queryset = queryset.exclude(id=self.instance.id)
+        
+        if queryset.exists():
+            raise serializers.ValidationError(
+                f"A department with the name '{value}' already exists in this tenant."
+            )
+        
+        return value
 
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -99,3 +126,30 @@ class RoleSerializer(serializers.ModelSerializer):
     
     def get_user_count(self, obj):
         return obj.users.count()
+    
+    def validate_name(self, value):
+        """Validate that role name is unique within the tenant"""
+        request = self.context.get('request')
+        if not request:
+            return value
+            
+        tenant = getattr(request, 'tenant', None)
+        if not tenant:
+            return value
+        
+        # Check for existing role with same name in the same tenant
+        queryset = TenantRole.objects.filter(
+            tenant=tenant,
+            name__iexact=value  # Case-insensitive check
+        )
+        
+        # If updating an existing role, exclude it from the check
+        if self.instance:
+            queryset = queryset.exclude(id=self.instance.id)
+        
+        if queryset.exists():
+            raise serializers.ValidationError(
+                f"A custom role with the name '{value}' already exists in this tenant."
+            )
+        
+        return value

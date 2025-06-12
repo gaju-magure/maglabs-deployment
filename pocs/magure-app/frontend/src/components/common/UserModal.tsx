@@ -174,7 +174,7 @@ export const UserModal: React.FC<UserModalProps> = ({
           </div>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-6 overflow-y-auto max-h-[60vh] scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+          <div className="space-y-6 overflow-y-auto max-h-[60vh] scrollbar-hide px-1" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="first_name" style={{ fontFamily: 'Satoshi, sans-serif' }}>First Name</Label>

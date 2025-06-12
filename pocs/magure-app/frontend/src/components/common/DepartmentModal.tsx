@@ -132,7 +132,7 @@ export const DepartmentModal: React.FC<DepartmentModalProps> = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-6 overflow-y-auto max-h-[60vh] scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+          <div className="space-y-6 overflow-y-auto max-h-[60vh] scrollbar-hide px-1" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
           <div className="space-y-2">
             <Label htmlFor="name" style={{ fontFamily: 'Satoshi, sans-serif' }}>Department Name</Label>
             <Input

@@ -135,7 +135,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
           </div>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 mt-4 sm:mt-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 mt-4 sm:mt-6 px-1">
           <div className="space-y-2">
             <Label htmlFor="name" style={{ fontFamily: 'Satoshi, sans-serif' }}>
               Tenant Name

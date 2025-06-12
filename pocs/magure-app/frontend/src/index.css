@@ -114,4 +114,8 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  
+  .modal-focus-padding {
+    @apply px-1;
+  }
 }

@@ -79,7 +79,9 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         
         if request.method == 'GET':
-            serializer = UserProfileSerializer(user.profile)
+            # Get or create profile if it doesn't exist
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            serializer = UserProfileSerializer(profile)
             return Response(serializer.data)
         
         else:  # PUT or PATCH
@@ -87,14 +89,17 @@ class UserViewSet(viewsets.ModelViewSet):
             if request.user.role not in ['superadmin', 'tenant_admin'] and user.id != request.user.id:
                 return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
             
+            # Get or create profile if it doesn't exist
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            
             serializer = UserProfileUpdateSerializer(
-                user.profile, 
+                profile, 
                 data=request.data, 
                 partial=(request.method == 'PATCH')
             )
             if serializer.is_valid():
                 serializer.save()
-                return Response(UserProfileSerializer(user.profile).data)
+                return Response(UserProfileSerializer(profile).data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(
@@ -111,12 +116,15 @@ class UserViewSet(viewsets.ModelViewSet):
         if request.user.role not in ['superadmin', 'tenant_admin'] and user.id != request.user.id:
             return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         
-        serializer = UserProfileAvatarSerializer(user.profile, data=request.data)
+        # Get or create profile if it doesn't exist
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        
+        serializer = UserProfileAvatarSerializer(profile, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({
                 'message': 'Avatar uploaded successfully',
-                'avatar_url': user.profile.profile_avatar.url if user.profile.profile_avatar else None
+                'avatar_url': profile.profile_avatar.url if profile.profile_avatar else None
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -129,8 +137,11 @@ class UserViewSet(viewsets.ModelViewSet):
         if request.user.role not in ['superadmin', 'tenant_admin'] and user.id != request.user.id:
             return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         
-        if user.profile.profile_avatar:
-            user.profile.profile_avatar.delete(save=True)
+        # Get or create profile if it doesn't exist
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        
+        if profile.profile_avatar:
+            profile.profile_avatar.delete(save=True)
             return Response({'message': 'Avatar deleted successfully'})
         
         return Response({'message': 'No avatar to delete'}, status=status.HTTP_400_BAD_REQUEST)

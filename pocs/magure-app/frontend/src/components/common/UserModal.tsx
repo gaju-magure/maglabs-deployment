@@ -26,7 +26,6 @@ interface UserModalProps {
     last_name: string;
     role: string;
     job_title?: string;
-    phone_number?: string;
     department_id?: number;
     custom_role_id?: number;
     avatar_url?: string;
@@ -42,7 +41,6 @@ interface UserModalProps {
     last_name: string;
     role: string;
     job_title?: string;
-    phone_number?: string;
     department_id?: number;
     custom_role_id?: number;
   }) => void;
@@ -76,7 +74,6 @@ export const UserModal: React.FC<UserModalProps> = ({
     last_name: initialData?.last_name || '',
     role: initialData?.role || (currentUser?.role === UserRole.SuperAdmin ? 'tenant_user' : ''),
     job_title: initialData?.job_title || '',
-    phone_number: initialData?.phone_number || '',
     // Extract IDs from either direct values or nested objects for initial data
     department_id: extractId(initialData?.department_id) || extractId(initialData?.department) || undefined,
     custom_role_id: extractId(initialData?.custom_role_id) || extractId(initialData?.custom_role) || undefined,
@@ -95,7 +92,6 @@ export const UserModal: React.FC<UserModalProps> = ({
         last_name: initialData.last_name || '',
         role: initialData.role || '',
         job_title: initialData.job_title || '',
-        phone_number: initialData.phone_number || '',
         // Extract IDs from either direct values or nested objects
         department_id: extractId(initialData.department_id) || extractId(initialData.department),
         custom_role_id: extractId(initialData.custom_role_id) || extractId(initialData.custom_role),
@@ -111,7 +107,6 @@ export const UserModal: React.FC<UserModalProps> = ({
         // For super admin, default to tenant_user role
         role: currentUser?.role === UserRole.SuperAdmin ? 'tenant_user' : '',
         job_title: '',
-        phone_number: '',
         department_id: undefined,
         custom_role_id: undefined,
       });
@@ -136,7 +131,6 @@ export const UserModal: React.FC<UserModalProps> = ({
         submitData.role = formData.role;
         // Add profile fields for tenant admins
         submitData.job_title = formData.job_title;
-        submitData.phone_number = formData.phone_number;
         submitData.department_id = formData.department_id;
         submitData.custom_role_id = formData.custom_role_id;
       } else {
@@ -163,7 +157,6 @@ export const UserModal: React.FC<UserModalProps> = ({
         last_name: '',
         role: '',
         job_title: '',
-        phone_number: '',
         department_id: undefined,
         custom_role_id: undefined,
       });
@@ -361,18 +354,6 @@ export const UserModal: React.FC<UserModalProps> = ({
                   value={formData.job_title}
                   onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
                   placeholder="Software Engineer"
-                  className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
-                  style={{ fontFamily: 'Satoshi, sans-serif' }}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="phone_number" style={{ fontFamily: 'Satoshi, sans-serif' }}>Phone Number</Label>
-                <Input
-                  id="phone_number"
-                  value={formData.phone_number}
-                  onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                  placeholder="+1 (555) 123-4567"
                   className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200"
                   style={{ fontFamily: 'Satoshi, sans-serif' }}
                 />

@@ -1,9 +1,16 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, User, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { UserRole } from '@/enums/userRole';
 
@@ -76,37 +83,54 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Desktop User Info */}
           <div className="hidden sm:flex items-center gap-3">
-            <span className="text-sm text-gray-600 truncate max-w-32">
+            <span className="text-sm text-gray-600 truncate max-w-32" style={{ fontFamily: 'Satoshi, sans-serif' }}>
               {user?.firstName} {user?.lastName}
             </span>
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
-                {getUserInitials()}
-              </AvatarFallback>
-            </Avatar>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={logout}
-              className="text-gray-600 hover:text-gray-900 hidden lg:flex"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={logout}
-              className="text-gray-600 hover:text-gray-900 lg:hidden"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0 hover:bg-gray-100">
+                  <Avatar className="h-8 w-8">
+                    {user?.avatarUrl && (
+                      <AvatarImage src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} />
+                    )}
+                    <AvatarFallback className="bg-gradient-to-r from-[#FDA052] to-[#B96AF7] text-white text-xs">
+                      {getUserInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                <DropdownMenuItem asChild>
+                  <Link to="/profile" className="flex items-center cursor-pointer" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                    <User className="mr-2 h-4 w-4" />
+                    Profile Settings
+                  </Link>
+                </DropdownMenuItem>
+                {user?.role === UserRole.TenantAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/settings" className="flex items-center cursor-pointer" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Admin Settings
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600 cursor-pointer" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Mobile Avatar and Menu */}
           <div className="flex sm:hidden items-center gap-2">
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
+              {user?.avatarUrl && (
+                <AvatarImage src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} />
+              )}
+              <AvatarFallback className="bg-gradient-to-r from-[#FDA052] to-[#B96AF7] text-white text-xs">
                 {getUserInitials()}
               </AvatarFallback>
             </Avatar>
@@ -142,13 +166,36 @@ export const Navbar: React.FC = () => {
                 to={link.to}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="text-gray-600 hover:text-blue-700 font-medium py-2 px-3 rounded-md hover:bg-gray-50"
+                style={{ fontFamily: 'Satoshi, sans-serif' }}
               >
                 {link.label}
               </Link>
             ))}
+            <div className="border-t pt-3 mt-3">
+              <Link
+                to="/profile"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-gray-600 hover:text-blue-700 font-medium py-2 px-3 rounded-md hover:bg-gray-50 flex items-center"
+                style={{ fontFamily: 'Satoshi, sans-serif' }}
+              >
+                <User className="h-4 w-4 mr-2" />
+                Profile Settings
+              </Link>
+              {user?.role === UserRole.TenantAdmin && (
+                <Link
+                  to="/dashboard/settings"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-gray-600 hover:text-blue-700 font-medium py-2 px-3 rounded-md hover:bg-gray-50 flex items-center"
+                  style={{ fontFamily: 'Satoshi, sans-serif' }}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Admin Settings
+                </Link>
+              )}
+            </div>
             <div className="border-t pt-3 mt-3 sm:hidden">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 truncate">
+                <span className="text-sm text-gray-600 truncate" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                   {user?.firstName} {user?.lastName}
                 </span>
                 <Button 
@@ -159,6 +206,7 @@ export const Navbar: React.FC = () => {
                     setIsMobileMenuOpen(false);
                   }}
                   className="text-gray-600 hover:text-gray-900"
+                  style={{ fontFamily: 'Satoshi, sans-serif' }}
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout

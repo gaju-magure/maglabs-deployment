@@ -14,6 +14,7 @@ import { ContentWallPage } from "@/pages/Dashboard/ContentWallPage";
 import { IdeasPage } from "@/pages/Dashboard/IdeasPage";
 import { OrganizationPage } from "@/pages/Dashboard/OrganizationPage";
 import { TenantOnboarding } from "@/pages/TenantOnboarding";
+import { ProfilePage } from "@/pages/ProfilePage";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,16 @@ const App = () => (
 
             {/* Public onboarding route */}
             <Route path="/onboarding/:token" element={<TenantOnboarding />} />
+
+            {/* Profile route - accessible to all authenticated users */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute allowedRoles={["superadmin", "tenant_admin", "tenant_user"]}>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               path="/dashboard/*"

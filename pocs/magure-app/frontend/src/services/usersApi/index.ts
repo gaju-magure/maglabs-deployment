@@ -22,6 +22,38 @@ export interface UpdateUserRequest {
   custom_role_id?: number;
 }
 
+export interface UserProfile {
+  id: string;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  is_active: boolean;
+  profile?: {
+    job_title?: string;
+    department?: {
+      id: number;
+      name: string;
+    } | null;
+    custom_role?: {
+      id: number;
+      name: string;
+    } | null;
+  };
+  avatar_url?: string;
+}
+
+export interface UpdateProfileRequest {
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  email?: string;
+  job_title?: string;
+  department_id?: number;
+  custom_role_id?: number;
+}
+
 export interface CreateUserResponse {
   id: string;
   username: string;
@@ -83,6 +115,33 @@ export async function updateUser(userId: string, userData: UpdateUserRequest): P
 
   if (!response.ok) {
     throw new Error('Failed to update user');
+  }
+
+  return response.json();
+}
+
+export async function getCurrentUserProfile(): Promise<UserProfile> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/accounts/profile/`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to get user profile');
+  }
+
+  return response.json();
+}
+
+export async function updateCurrentUserProfile(profileData: UpdateProfileRequest): Promise<UserProfile> {
+  const response = await fetch(`${getBaseUrl()}/api/v1/accounts/profile/`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(profileData),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update profile');
   }
 
   return response.json();

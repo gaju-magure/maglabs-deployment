@@ -11,12 +11,16 @@ interface User {
   tenantSchema?: string;
   tenantName?: string;
   tenantDomain?: string;
+  username?: string;
+  avatarUrl?: string;
 }
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+  updateUserProfile: (profileData: Partial<User>) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,6 +55,8 @@ const decodeJWT = (token: string): User | null => {
       tenantSchema:  payload.tenant_schema             || undefined,
       tenantName:    payload.tenant_name               || undefined,
       tenantDomain:  payload.tenant_domain             || undefined,
+      username:      payload.username                  || undefined,
+      avatarUrl:     payload.avatar_url                || undefined,
     };
   } catch (error) {
     console.error('Failed to decode JWT:', error);
@@ -98,8 +104,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
   };
 
+  const updateUserProfile = (profileData: Partial<User>) => {
+    setUser(prevUser => prevUser ? { ...prevUser, ...profileData } : null);
+  };
+
+  const refreshUser = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      const userData = decodeJWT(token);
+      setUser(userData);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, updateUserProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

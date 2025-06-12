@@ -114,27 +114,35 @@ export const UserModal: React.FC<UserModalProps> = ({
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      // Only include profile fields if user is tenant admin
-      let submitData;
-      
-      if (showProfileFields) {
-        submitData = mode === 'edit' && !formData.password 
-          ? { ...formData, password: undefined }
-          : formData;
+      // Build submit data based on user role and mode
+      let submitData: any = {
+        username: formData.username,
+        email: formData.email,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+      };
+
+      // Add role field
+      if (currentUser?.role === UserRole.TenantAdmin) {
+        submitData.role = formData.role;
+        // Add profile fields for tenant admins
+        submitData.job_title = formData.job_title;
+        submitData.phone_number = formData.phone_number;
+        submitData.department_id = formData.department_id;
+        submitData.custom_role_id = formData.custom_role_id;
       } else {
-        submitData = {
-          username: formData.username,
-          email: formData.email,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          // For super admin, default to tenant_user role if no role is selected
-          role: formData.role || (currentUser?.role === UserRole.SuperAdmin ? 'tenant_user' : ''),
-        };
-        
-        // Only include password for create mode or when password is provided in edit mode
-        if (mode === 'create' || formData.password) {
-          submitData.password = formData.password;
-        }
+        // For super admin, default to tenant_user role if no role is selected
+        submitData.role = formData.role || 'tenant_user';
+      }
+
+      // Handle password field
+      if (mode === 'create' || formData.password) {
+        submitData.password = formData.password;
+      }
+
+      // For edit mode, remove undefined password
+      if (mode === 'edit' && !formData.password) {
+        delete submitData.password;
       }
       
       await onSubmit(submitData);
@@ -277,7 +285,7 @@ export const UserModal: React.FC<UserModalProps> = ({
           )}
           
           {/* Department selection - shown for tenant admins */}
-          {currentUser?.role === UserRole.TenantAdmin && departments.length > 0 && (
+          {currentUser?.role === UserRole.TenantAdmin && (
             <div className="space-y-2">
               <Label htmlFor="department" style={{ fontFamily: 'Satoshi, sans-serif' }}>Department</Label>
               <Select 
@@ -289,18 +297,24 @@ export const UserModal: React.FC<UserModalProps> = ({
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="none" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Department</SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                      {dept.name}
+                  {departments.length > 0 ? (
+                    departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                        {dept.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="loading" disabled style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                      No departments available
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>
           )}
           
           {/* Custom Role selection - shown for tenant admins */}
-          {currentUser?.role === UserRole.TenantAdmin && customRoles.length > 0 && (
+          {currentUser?.role === UserRole.TenantAdmin && (
             <div className="space-y-2">
               <Label htmlFor="custom_role" style={{ fontFamily: 'Satoshi, sans-serif' }}>Custom Role</Label>
               <Select 
@@ -312,17 +326,24 @@ export const UserModal: React.FC<UserModalProps> = ({
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="none" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Custom Role</SelectItem>
-                  {customRoles.map((role) => (
-                    <SelectItem key={role.id} value={role.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                      {role.name}
+                  {customRoles.length > 0 ? (
+                    customRoles.map((role) => (
+                      <SelectItem key={role.id} value={role.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                        {role.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="loading" disabled style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                      No custom roles available
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>
           )}
           
-          {showProfileFields && (
+          {/* Profile fields - shown for tenant admins */}
+          {currentUser?.role === UserRole.TenantAdmin && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="job_title" style={{ fontFamily: 'Satoshi, sans-serif' }}>Job Title</Label>
@@ -347,7 +368,6 @@ export const UserModal: React.FC<UserModalProps> = ({
                   style={{ fontFamily: 'Satoshi, sans-serif' }}
                 />
               </div>
-              
             </>
           )}
           </div>

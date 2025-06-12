@@ -164,15 +164,15 @@ export const DepartmentModal: React.FC<DepartmentModalProps> = ({
             <div className="space-y-2">
               <Label htmlFor="parent_department" style={{ fontFamily: 'Satoshi, sans-serif' }}>Parent Department</Label>
               <Select
-                value={formData.parent_department?.toString() || ''}
-                onValueChange={(value) => setFormData({ ...formData, parent_department: value ? parseInt(value) : undefined })}
+                value={formData.parent_department?.toString() || 'none'}
+                onValueChange={(value) => setFormData({ ...formData, parent_department: value === 'none' ? undefined : parseInt(value) })}
                 disabled={isSubmitting}
               >
                 <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                   <SelectValue placeholder="Select parent department (optional)" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  <SelectItem value="none" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                     No Parent (Top Level)
                   </SelectItem>
                   {getAvailableParentDepartments().map((dept) => (
@@ -189,15 +189,15 @@ export const DepartmentModal: React.FC<DepartmentModalProps> = ({
             <div className="space-y-2">
               <Label htmlFor="department_head" style={{ fontFamily: 'Satoshi, sans-serif' }}>Department Head</Label>
               <Select
-                value={formData.department_head?.toString() || ''}
-                onValueChange={(value) => setFormData({ ...formData, department_head: value ? parseInt(value) : undefined })}
+                value={formData.department_head?.toString() || 'none'}
+                onValueChange={(value) => setFormData({ ...formData, department_head: value === 'none' ? undefined : parseInt(value) })}
                 disabled={isSubmitting}
               >
                 <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                   <SelectValue placeholder="Select department head (optional)" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  <SelectItem value="none" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                     No Department Head
                   </SelectItem>
                   {users.map((user) => (

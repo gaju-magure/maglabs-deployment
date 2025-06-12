@@ -4,10 +4,6 @@ import { CheckCircle, XCircle, Users, Shield } from 'lucide-react';
 import { DataTableColumn } from '@/components/ui/data-table';
 import { CustomRole } from '@/services/organizationApi';
 
-const getPermissionCount = (permissions: Record<string, unknown>) => {
-  if (!permissions || typeof permissions !== 'object') return 0;
-  return Object.values(permissions).filter(Boolean).length;
-};
 
 const getStatusBadgeColor = (isActive: boolean) => {
   return isActive 
@@ -48,15 +44,15 @@ export const customRoleColumns: DataTableColumn<CustomRole>[] = [
     )
   },
   {
-    key: 'permissions',
-    label: 'Permissions',
+    key: 'type',
+    label: 'Type',
     width: '150px',
     className: 'hidden sm:table-cell',
     render: (role) => (
       <div className="flex items-center gap-2">
         <Shield className="w-4 h-4 text-gray-500" />
         <span className="text-sm text-gray-700 dark:text-gray-300" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-          {getPermissionCount(role.permissions)} permissions
+          {role.is_system_role ? 'System Role' : 'Custom Role'}
         </span>
       </div>
     )

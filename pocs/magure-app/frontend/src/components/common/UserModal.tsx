@@ -281,14 +281,14 @@ export const UserModal: React.FC<UserModalProps> = ({
             <div className="space-y-2">
               <Label htmlFor="department" style={{ fontFamily: 'Satoshi, sans-serif' }}>Department</Label>
               <Select 
-                value={formData.department_id?.toString() || ''} 
-                onValueChange={(value) => setFormData({ ...formData, department_id: value ? parseInt(value) : undefined })}
+                value={formData.department_id?.toString() || 'none'} 
+                onValueChange={(value) => setFormData({ ...formData, department_id: value === 'none' ? undefined : parseInt(value) })}
               >
                 <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Department</SelectItem>
+                  <SelectItem value="none" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Department</SelectItem>
                   {departments.map((dept) => (
                     <SelectItem key={dept.id} value={dept.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
                       {dept.name}
@@ -304,14 +304,14 @@ export const UserModal: React.FC<UserModalProps> = ({
             <div className="space-y-2">
               <Label htmlFor="custom_role" style={{ fontFamily: 'Satoshi, sans-serif' }}>Custom Role</Label>
               <Select 
-                value={formData.custom_role_id?.toString() || ''} 
-                onValueChange={(value) => setFormData({ ...formData, custom_role_id: value ? parseInt(value) : undefined })}
+                value={formData.custom_role_id?.toString() || 'none'} 
+                onValueChange={(value) => setFormData({ ...formData, custom_role_id: value === 'none' ? undefined : parseInt(value) })}
               >
                 <SelectTrigger className="rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#B96AF7] transition-all duration-200" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                   <SelectValue placeholder="Select custom role" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  <SelectItem value="" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Custom Role</SelectItem>
+                  <SelectItem value="none" style={{ fontFamily: 'Satoshi, sans-serif' }}>No Custom Role</SelectItem>
                   {customRoles.map((role) => (
                     <SelectItem key={role.id} value={role.id.toString()} style={{ fontFamily: 'Satoshi, sans-serif' }}>
                       {role.name}

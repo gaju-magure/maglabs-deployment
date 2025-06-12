@@ -21,6 +21,9 @@ import {
   IdeaStatusLabels,
   IdeaPriority,
   IdeaPriorityLabels,
+  IdeaStickyNoteColors,
+  IdeaStickyNoteRotations,
+  IdeaStickyNoteShadows,
 } from '@/enums/ideaStatus';
 
 export const ContentWallPage: React.FC = () => {
@@ -41,6 +44,20 @@ export const ContentWallPage: React.FC = () => {
 
   // Check if user is admin (can pin/unpin ideas and see filters)
   const isAdmin = user?.role === 'superadmin' || user?.role === 'tenant_admin';
+
+  // Get sticky-note styling for an idea
+  const getStickyNoteStyle = (idea: Idea, index: number) => {
+    const statusStyle = IdeaStickyNoteColors[idea.status as IdeaStatus] || IdeaStickyNoteColors[IdeaStatus.Submitted];
+    const rotation = IdeaStickyNoteRotations[index % IdeaStickyNoteRotations.length];
+    const shadow = idea.is_pinned ? IdeaStickyNoteShadows.pinned : IdeaStickyNoteShadows.default;
+    
+    return {
+      backgroundClass: statusStyle,
+      rotationClass: rotation,
+      shadowClass: shadow,
+      hoverShadow: IdeaStickyNoteShadows.hover,
+    };
+  };
 
   // Calculate department statistics
   const getDepartmentStats = () => {
@@ -262,6 +279,20 @@ export const ContentWallPage: React.FC = () => {
       if (updatedIdea) {
         setSelectedIdea(updatedIdea);
       }
+    }
+  };
+
+  const handleStatusUpdate = (updatedIdea: Idea) => {
+    // Update the idea in the local state
+    setIdeas(prevIdeas => 
+      prevIdeas.map(idea => 
+        idea.id === updatedIdea.id ? updatedIdea : idea
+      )
+    );
+    
+    // Update the selected idea if it's the one being updated
+    if (selectedIdea && selectedIdea.id === updatedIdea.id) {
+      setSelectedIdea(updatedIdea);
     }
   };
 
@@ -558,26 +589,35 @@ export const ContentWallPage: React.FC = () => {
               </div>
             )}
             
-            {filteredIdeas.map((idea, index) => (
-              <Card 
-                key={idea.id} 
-                className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl animate-in slide-in-from-bottom cursor-pointer group ${
-                  idea.is_pinned 
-                    ? 'ring-2 ring-amber-400/50 dark:ring-amber-600/50 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/10 dark:via-orange-950/10 dark:to-yellow-950/10 shadow-amber-100/50 dark:shadow-amber-900/20' 
-                    : 'hover:scale-[1.01] transform bg-white dark:bg-gray-900 hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:shadow-gray-900/50'
-                }`}
-                style={{ 
-                  animationDelay: `${index * 50}ms`,
-                  fontFamily: 'Satoshi, sans-serif'
-                }}
-                onClick={() => handleIdeaClick(idea)}
-              >
+            {filteredIdeas.map((idea, index) => {
+              const stickyStyle = getStickyNoteStyle(idea, index);
+              return (
+                <Card 
+                  key={idea.id} 
+                  className={`relative overflow-hidden transition-all duration-300 animate-in slide-in-from-bottom cursor-pointer group border-2 ${
+                    stickyStyle.backgroundClass
+                  } ${
+                    stickyStyle.rotationClass
+                  } ${
+                    stickyStyle.shadowClass
+                  } hover:${stickyStyle.hoverShadow} hover:scale-105 hover:rotate-0 hover:z-10`}
+                  style={{ 
+                    animationDelay: `${index * 50}ms`,
+                    fontFamily: 'Satoshi, sans-serif',
+                    transformOrigin: 'center center',
+                  }}
+                  onClick={() => handleIdeaClick(idea)}
+                >
                 {idea.is_pinned && (
-                  <div className="absolute top-0 right-0">
-                    <div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white px-3 py-1 rounded-bl-lg shadow-lg">
-                      <div className="flex items-center gap-1">
-                        <Pin className="w-3 h-3 fill-current" />
-                        <span className="text-xs font-semibold">Pinned</span>
+                  <div className="absolute -top-2 -right-2 z-20">
+                    <div className="relative">
+                      {/* Pushpin shadow */}
+                      <div className="absolute top-1 left-1 w-6 h-6 bg-gray-800/20 rounded-full blur-sm"></div>
+                      {/* Pushpin body */}
+                      <div className="w-6 h-6 bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-full shadow-lg border-2 border-red-800 transform rotate-12">
+                        <div className="absolute inset-1 bg-gradient-to-br from-red-300 to-red-400 rounded-full"></div>
+                        {/* Pushpin needle */}
+                        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-0.5 h-3 bg-gray-600 shadow-sm"></div>
                       </div>
                     </div>
                   </div>
@@ -598,19 +638,19 @@ export const ContentWallPage: React.FC = () => {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <CardTitle className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-2 line-clamp-2 group-hover:from-blue-600 group-hover:to-purple-600 dark:group-hover:from-blue-400 dark:group-hover:to-purple-400 transition-all duration-300">
+                        <CardTitle className="text-lg font-bold text-current mb-2 line-clamp-2 drop-shadow-sm">
                           {idea.title}
                         </CardTitle>
                         
                         {/* Author and Job Title */}
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          <span className="text-sm font-semibold text-current opacity-90">
                             {idea.user_name || idea.user_email.split('@')[0]}
                           </span>
                           {idea.user_profile?.job_title && (
                             <>
-                              <span className="text-gray-400">•</span>
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                              <span className="text-current opacity-60">•</span>
+                              <span className="text-sm text-current opacity-80">
                                 {idea.user_profile.job_title}
                               </span>
                             </>
@@ -618,39 +658,31 @@ export const ContentWallPage: React.FC = () => {
                         </div>
                         
                         {/* Department and Role Badges */}
-                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <div className="flex flex-wrap items-center gap-1 mb-2">
                           {idea.department_name && (
-                            <Badge variant="secondary" className="text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
-                              <Building2 className="w-3 h-3 mr-1" />
+                            <Badge variant="secondary" className="text-xs bg-white/80 text-gray-800 border border-gray-300 shadow-sm">
+                              <Building2 className="w-2.5 h-2.5 mr-1" />
                               {idea.department_name}
                             </Badge>
                           )}
                           {idea.custom_role_name && (
-                            <Badge variant="secondary" className="text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
-                              <Briefcase className="w-3 h-3 mr-1" />
+                            <Badge variant="secondary" className="text-xs bg-white/80 text-gray-800 border border-gray-300 shadow-sm">
+                              <Briefcase className="w-2.5 h-2.5 mr-1" />
                               {idea.custom_role_name}
                             </Badge>
                           )}
                         </div>
                         
                         {/* Meta Information */}
-                        <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="w-4 h-4" />
+                        <div className="flex items-center gap-2 text-xs text-current opacity-80">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
                             <span>{getRelativeTime(idea.created_at)}</span>
                           </div>
-                          {idea.status && (
-                            <Badge 
-                              variant="secondary" 
-                              className="text-xs capitalize"
-                            >
-                              {IdeaStatusLabels[idea.status as keyof typeof IdeaStatusLabels] || idea.status}
-                            </Badge>
-                          )}
                           {idea.priority && (
                             <Badge 
                               variant="outline" 
-                              className="text-xs capitalize"
+                              className="text-xs capitalize bg-white/70 text-gray-800 border-gray-400 px-1.5 py-0.5"
                             >
                               {IdeaPriorityLabels[idea.priority as keyof typeof IdeaPriorityLabels] || idea.priority}
                             </Badge>
@@ -668,16 +700,17 @@ export const ContentWallPage: React.FC = () => {
                           handleTogglePin(idea.id);
                         }}
                         disabled={togglingPin === idea.id}
-                        className={`ml-4 transition-all duration-200 rounded-lg ${
+                        className={`ml-2 transition-all duration-200 rounded-full w-8 h-8 p-0 backdrop-blur-sm ${
                           idea.is_pinned 
-                            ? 'text-amber-600 hover:text-amber-700 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/20 dark:hover:bg-amber-900/30' 
-                            : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/10'
+                            ? 'bg-red-500/20 hover:bg-red-500/30 text-red-700 border border-red-300' 
+                            : 'bg-white/50 hover:bg-white/70 text-gray-600 hover:text-red-600 border border-gray-300'
                         }`}
+                        title={idea.is_pinned ? 'Unpin idea' : 'Pin idea'}
                       >
                         {togglingPin === idea.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-3 h-3 animate-spin" />
                         ) : (
-                          <Pin className={`w-4 h-4 ${idea.is_pinned ? 'fill-current' : ''}`} />
+                          <Pin className={`w-3 h-3 ${idea.is_pinned ? 'fill-current' : ''}`} />
                         )}
                       </Button>
                     )}
@@ -685,13 +718,13 @@ export const ContentWallPage: React.FC = () => {
                 </CardHeader>
 
                 <CardContent className="pt-0">
-                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-3 mb-4">
+                  <p className="text-current opacity-90 leading-relaxed line-clamp-2 mb-3 text-sm font-medium">
                     {idea.description}
                   </p>
                   
                   {/* Engagement Actions */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
-                    <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between pt-3 border-t border-current/20">
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -700,25 +733,25 @@ export const ContentWallPage: React.FC = () => {
                           handleLikeIdea(idea.id, idea.is_liked);
                         }}
                         disabled={likingIdea === idea.id}
-                        className={`flex items-center gap-2 transition-all duration-200 rounded-lg ${
+                        className={`flex items-center gap-1 h-7 px-2 transition-all duration-200 rounded-full backdrop-blur-sm ${
                           idea.is_liked 
-                            ? 'text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30' 
-                            : 'text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'
+                            ? 'bg-red-500/20 hover:bg-red-500/30 text-red-700 border border-red-300' 
+                            : 'bg-white/50 hover:bg-white/70 text-gray-600 hover:text-red-600 border border-gray-300'
                         }`}
                       >
                         {likingIdea === idea.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-3 h-3 animate-spin" />
                         ) : (
-                          <Heart className={`w-4 h-4 transition-all duration-200 ${idea.is_liked ? 'fill-current' : ''}`} />
+                          <Heart className={`w-3 h-3 transition-all duration-200 ${idea.is_liked ? 'fill-current' : ''}`} />
                         )}
-                        <span className="text-sm font-medium">{idea.like_count || 0}</span>
+                        <span className="text-xs font-medium">{idea.like_count || 0}</span>
                       </Button>
                     </div>
                     
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                      className="text-xs bg-white/50 hover:bg-white/70 text-gray-700 hover:text-gray-900 border border-gray-300 rounded-full px-3 h-7 transition-all duration-200 backdrop-blur-sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleIdeaClick(idea);
@@ -728,8 +761,9 @@ export const ContentWallPage: React.FC = () => {
                     </Button>
                   </div>
                 </CardContent>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )}
         </div>
@@ -740,6 +774,7 @@ export const ContentWallPage: React.FC = () => {
         onClose={handleCloseModal}
         onLike={handleModalLike}
         onPin={isAdmin ? handleModalPin : undefined}
+        onStatusUpdate={isAdmin ? handleStatusUpdate : undefined}
         isLiking={likingIdea === selectedIdea?.id}
         isPinning={togglingPin === selectedIdea?.id}
         isAdmin={isAdmin}

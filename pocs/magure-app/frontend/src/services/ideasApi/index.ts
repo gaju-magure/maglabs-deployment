@@ -20,8 +20,6 @@ export interface Idea {
   is_pinned: boolean;
   like_count: number;
   is_liked: boolean;
-  assigned_to?: string;
-  assigned_to_name?: string;
   estimated_effort?: string;
   business_value?: string;
   implementation_notes?: string;
@@ -50,7 +48,6 @@ export interface UpdateIdeaRequest {
 
 export interface StatusUpdateRequest {
   status: string;
-  assigned_to?: string;
   notes?: string;
 }
 
@@ -58,7 +55,6 @@ export interface IdeaAnalytics {
   total_ideas: number;
   by_status: Record<string, number>;
   by_priority: Record<string, number>;
-  assigned_to_me: number;
   created_by_me: number;
 }
 
@@ -214,7 +210,6 @@ export async function getIdeaAnalytics(): Promise<IdeaAnalytics> {
 export async function getIdeasWithFilters(filters: {
   status?: string;
   priority?: string;
-  assigned_to?: string;
   search?: string;
 }): Promise<Idea[]> {
   const params = new URLSearchParams();

@@ -87,9 +87,6 @@ class OpenAIService:
     def _build_refinement_prompt(self, idea_text, conversation_history):
         messages = []
 
-        if conversation_history:
-            messages.extend(conversation_history)  # Should already follow {role, content} format
-
         messages.append({
             "role": "system",
             "content": (
@@ -99,9 +96,11 @@ class OpenAIService:
             )
         })
 
+        if conversation_history:
+            messages.extend(conversation_history)  # Should already follow {role, content} format
+
         messages.append({
             "role": "user",
             "content": f"My idea: {idea_text}"
         })
-
         return messages

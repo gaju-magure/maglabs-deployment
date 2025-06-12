@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
+import uuid
 
 class Idea(models.Model):
     STATUS_CHOICES = [
@@ -170,3 +172,238 @@ class IdeaLike(models.Model):
         
     def __str__(self):
         return f"{self.user.email} likes {self.idea.title}"
+
+
+class ChatSession(models.Model):
+    """
+    Represents a chat conversation session similar to ChatGPT threads.
+    Each session can contain multiple messages and may result in an idea submission.
+    """
+    
+    CONVERSATION_TYPES = [
+        ('brainstorm', 'Brainstorming'),
+        ('refine', 'Idea Refinement'),
+        ('general', 'General Chat'),
+        ('problem_solving', 'Problem Solving'),
+        ('feature_design', 'Feature Design'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('archived', 'Archived'),
+        ('deleted', 'Deleted'),
+    ]
+    
+    # Primary key as UUID for better API security
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Session metadata
+    title = models.CharField(
+        max_length=255, 
+        default="New Chat",
+        help_text="Session title, auto-generated or user-defined"
+    )
+    conversation_type = models.CharField(
+        max_length=20, 
+        choices=CONVERSATION_TYPES, 
+        default='general'
+    )
+    status = models.CharField(
+        max_length=20, 
+        choices=STATUS_CHOICES, 
+        default='active'
+    )
+    
+    # User relationship - respects tenant boundaries
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='chat_sessions'
+    )
+    
+    # AI Configuration
+    system_prompt = models.TextField(
+        blank=True,
+        help_text="Custom system prompt for this session"
+    )
+    ai_model = models.CharField(
+        max_length=50,
+        default='gpt-4o-mini',
+        help_text="AI model used for this session"
+    )
+    
+    # Context from user profile
+    context_metadata = models.JSONField(
+        default=dict,
+        help_text="Stores department, role, and other context"
+    )
+    
+    # AI session tracking for MagLabs API features
+    ai_metadata = models.JSONField(
+        default=dict,
+        help_text="Stores interview session ID, stage, and other AI service metadata"
+    )
+    
+    # Idea submission tracking
+    submitted_idea = models.ForeignKey(
+        'Idea',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='source_chat_session',
+        help_text="The idea created from this chat session"
+    )
+    is_idea_submitted = models.BooleanField(default=False)
+    
+    # Session analytics
+    message_count = models.PositiveIntegerField(default=0)
+    total_tokens_used = models.PositiveIntegerField(default=0)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_activity_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-last_activity_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['last_activity_at']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title} - {self.user.email}"
+    
+    def update_activity(self):
+        """Update last activity timestamp"""
+        self.last_activity_at = timezone.now()
+        self.save(update_fields=['last_activity_at'])
+    
+    def can_submit_idea(self):
+        """Check if this session can be converted to an idea"""
+        return not self.is_idea_submitted and self.message_count > 0
+
+
+class ChatMessage(models.Model):
+    """
+    Individual messages within a chat session.
+    Supports user messages, AI responses, and system messages.
+    """
+    
+    ROLE_CHOICES = [
+        ('user', 'User'),
+        ('assistant', 'Assistant'),
+        ('system', 'System'),
+    ]
+    
+    MESSAGE_TYPES = [
+        ('text', 'Text Message'),
+        ('idea_draft', 'Idea Draft'),
+        ('refinement', 'Refinement Suggestion'),
+        ('question', 'Clarifying Question'),
+        ('submission', 'Submission Confirmation'),
+        ('error', 'Error Message'),
+    ]
+    
+    # Primary key and relationships
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session = models.ForeignKey(
+        ChatSession,
+        on_delete=models.CASCADE,
+        related_name='messages'
+    )
+    
+    # Message content
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    content = models.TextField()
+    message_type = models.CharField(
+        max_length=20,
+        choices=MESSAGE_TYPES,
+        default='text'
+    )
+    
+    # AI response metadata
+    ai_metadata = models.JSONField(
+        default=dict,
+        help_text="Stores model info, tokens used, processing time, etc."
+    )
+    
+    # Message organization
+    sequence_number = models.PositiveIntegerField(
+        help_text="Order of message within session"
+    )
+    parent_message = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='replies',
+        help_text="For threaded conversations"
+    )
+    
+    # Processing status
+    is_processed = models.BooleanField(default=True)
+    processing_status = models.CharField(
+        max_length=50,
+        default='completed',
+        help_text="Status of AI processing"
+    )
+    error_message = models.TextField(
+        blank=True,
+        help_text="Error details if processing failed"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['sequence_number']
+        unique_together = ['session', 'sequence_number']
+        indexes = [
+            models.Index(fields=['session', 'sequence_number']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['role']),
+        ]
+    
+    def __str__(self):
+        return f"{self.role}: {self.content[:50]}..."
+
+
+class ChatTemplate(models.Model):
+    """
+    Predefined templates for starting conversations.
+    Helps users begin productive chat sessions.
+    """
+    
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    conversation_type = models.CharField(
+        max_length=20,
+        choices=ChatSession.CONVERSATION_TYPES
+    )
+    initial_prompt = models.TextField(
+        help_text="The first message to start the conversation"
+    )
+    system_prompt_override = models.TextField(
+        blank=True,
+        help_text="Custom system prompt for this template"
+    )
+    is_active = models.BooleanField(default=True)
+    
+    # Templates can be global or department-specific
+    department = models.ForeignKey(
+        'tenants.TenantDepartment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Department-specific template"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.name} ({self.conversation_type})"

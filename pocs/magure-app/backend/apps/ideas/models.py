@@ -5,6 +5,7 @@ class Idea(models.Model):
     STATUS_CHOICES = [
         ('submitted', 'Submitted'),
         ('under_review', 'Under Review'),
+        ('refined', 'Refined'),
         ('in_development', 'In Development'),
         ('testing', 'Testing'),
         ('implemented', 'Implemented'),

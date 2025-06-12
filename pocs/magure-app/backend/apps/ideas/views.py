@@ -174,20 +174,42 @@ class IdeaViewSet(viewsets.ModelViewSet):
         public_statuses = ['refined', 'approved', 'implemented', 'testing', 'in_development']
         queryset = Idea.objects.filter(status__in=public_statuses)
         
-        # Role-based filtering for content wall access
+        # Role-based filtering for content wall access - CRITICAL SECURITY FIX
         if user.role == 'superadmin':
             # Super admins can see all public ideas across all tenants
             pass
         elif user.role == 'tenant_admin':
             # Tenant admins can see all public ideas in their tenant
+            # TODO: Add tenant filtering when multi-tenancy is fully implemented
             pass
         elif user.role == 'tenant_user':
-            # Tenant users can see all refined/public ideas in their tenant
-            # The content wall is meant to be public within the tenant
-            pass
+            # SECURITY FIX: Tenant users can only see:
+            # 1. Their own ideas (all public statuses)
+            # 2. Public ideas from their department/role only
+            queryset = queryset.filter(
+                models.Q(user=user) |  # Own ideas
+                models.Q(
+                    department=user.department,
+                    status__in=public_statuses
+                ) |
+                models.Q(
+                    custom_role=user.custom_role,
+                    status__in=public_statuses
+                )
+            ).distinct()
         else:
-            # For any other roles, no additional filtering
-            pass
+            # For any other roles, apply same restrictions as tenant_user
+            queryset = queryset.filter(
+                models.Q(user=user) |  # Own ideas
+                models.Q(
+                    department=user.department,
+                    status__in=public_statuses
+                ) |
+                models.Q(
+                    custom_role=user.custom_role,
+                    status__in=public_statuses
+                )
+            ).distinct()
         
         # Apply filters
         department_id = request.query_params.get('department')

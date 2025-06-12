@@ -444,6 +444,7 @@ export const ContentWallPage: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="refined">Refined</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="implemented">Implemented</SelectItem>
                   <SelectItem value="testing">Testing</SelectItem>

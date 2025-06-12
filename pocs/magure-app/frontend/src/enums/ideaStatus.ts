@@ -1,6 +1,7 @@
 export enum IdeaStatus {
   Submitted = 'submitted',
   UnderReview = 'under_review',
+  Refined = 'refined',
   InDevelopment = 'in_development',
   Testing = 'testing',
   Implemented = 'implemented',
@@ -14,6 +15,7 @@ export enum IdeaStatus {
 export const IdeaStatusLabels: Record<IdeaStatus, string> = {
   [IdeaStatus.Submitted]: 'Submitted',
   [IdeaStatus.UnderReview]: 'Under Review',
+  [IdeaStatus.Refined]: 'Refined',
   [IdeaStatus.InDevelopment]: 'In Development',
   [IdeaStatus.Testing]: 'Testing',
   [IdeaStatus.Implemented]: 'Implemented',
@@ -42,6 +44,7 @@ export const IdeaPriorityLabels: Record<IdeaPriority, string> = {
 export const IdeaStatusColors: Record<IdeaStatus, string> = {
   [IdeaStatus.Submitted]: 'bg-blue-100 text-blue-800',
   [IdeaStatus.UnderReview]: 'bg-yellow-100 text-yellow-800',
+  [IdeaStatus.Refined]: 'bg-indigo-100 text-indigo-800',
   [IdeaStatus.InDevelopment]: 'bg-purple-100 text-purple-800',
   [IdeaStatus.Testing]: 'bg-orange-100 text-orange-800',
   [IdeaStatus.Implemented]: 'bg-green-100 text-green-800',

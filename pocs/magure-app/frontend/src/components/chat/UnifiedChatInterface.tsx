@@ -591,7 +591,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
               <div className={`glass-container bg-white/30 backdrop-blur-sm rounded-xl p-4 border border-white/40 shadow-lg ${
                 isEmptyChat ? 'max-w-none' : 'max-w-3xl mx-auto'
               }`}>
-                <div className="relative">
+                <div className="space-y-3">
                   <Textarea
                     ref={textareaRef}
                     value={message}
@@ -606,23 +606,24 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
                     }
                     className={`${
                       isEmptyChat 
-                        ? 'min-h-[44px] sm:min-h-[52px] py-2.5 bg-white/60 backdrop-blur-sm border-0 focus:outline-none focus:ring-0' 
-                        : 'min-h-[80px] bg-white/50 backdrop-blur-sm border-white/30 focus:border-blue-400/50 focus:ring-blue-400/30'
-                    } pr-14 resize-none transition-all duration-300 text-gray-900 placeholder:text-gray-500`}
+                        ? 'min-h-[44px] sm:min-h-[52px] py-2.5 bg-white/60 backdrop-blur-sm border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0' 
+                        : 'min-h-[80px] bg-white/50 backdrop-blur-sm border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0'
+                    } w-full resize-none transition-all duration-300 text-gray-900 placeholder:text-gray-500`}
                     disabled={isProcessing || isTokenUsageHigh}
                     rows={isEmptyChat ? 1 : undefined}
                     style={isEmptyChat ? { minHeight: '44px' } : undefined}
                   />
-                  <Button
-                    size="icon"
-                    className={`absolute ${
-                      isEmptyChat ? 'right-2 h-8 w-8 sm:h-9 sm:w-9' : 'bottom-3 right-3'
-                    } glass-container bg-gradient-to-r from-blue-500/90 to-purple-500/90 hover:from-blue-600/90 hover:to-purple-600/90 border-0 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
-                    onClick={handleSend}
-                    disabled={!message.trim() || isProcessing || isTokenUsageHigh}
-                  >
-                    <Send size={16} className="text-white" />
-                  </Button>
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      className="glass-container bg-gradient-to-r from-blue-500/90 to-purple-500/90 hover:from-blue-600/90 hover:to-purple-600/90 border-0 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      onClick={handleSend}
+                      disabled={!message.trim() || isProcessing || isTokenUsageHigh}
+                    >
+                      <Send size={16} className="text-white" />
+                      <span className="text-white">Send</span>
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
                   <span className={isEmptyChat ? "hidden sm:inline" : ""}>

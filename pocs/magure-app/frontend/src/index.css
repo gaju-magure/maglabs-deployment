@@ -209,7 +209,7 @@
   .chat-input:focus {
     outline: none;
     border-color: var(--chat-input-focus);
-    box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
+    box-shadow: 0 0 0 1px rgba(16, 163, 127, 0.2);
   }
   
   .chat-send-button {

@@ -572,7 +572,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
           {/* Input Area */}
           <div className="border-t border-gray-200 bg-white px-6 py-4">
             <div className="max-w-4xl mx-auto">
-              <div className="relative bg-white border border-gray-300 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="relative bg-white border border-gray-300 rounded-xl p-4 shadow-sm hover:shadow-md focus-within:border-green-400 focus-within:shadow-sm transition-all">
                 <Textarea
                   ref={textareaRef}
                   value={message}

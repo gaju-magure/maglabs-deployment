@@ -12,7 +12,8 @@ import { useDepartmentManagement } from '@/hooks/useDepartmentManagement';
 import { useUserManagement } from '@/hooks/useUserManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/enums/userRole';
-import { Trash2, Building, Shield } from 'lucide-react';
+import { Trash2, Building, Shield, Palette } from 'lucide-react';
+import { BrandingPanel } from '@/components/branding/BrandingPanel';
 
 export const OrganizationPage: React.FC = () => {
   const { user: currentUser } = useAuth();
@@ -96,13 +97,13 @@ export const OrganizationPage: React.FC = () => {
               Organization Management
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-              Manage your organization's custom roles and departments
+              Manage your organization's custom roles, departments, and branding
             </p>
           </div>
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsList className="grid w-full grid-cols-3 max-w-lg">
               <TabsTrigger 
                 value="roles" 
                 className="flex items-center gap-2"
@@ -118,6 +119,14 @@ export const OrganizationPage: React.FC = () => {
               >
                 <Building className="w-4 h-4" />
                 Departments
+              </TabsTrigger>
+              <TabsTrigger 
+                value="branding" 
+                className="flex items-center gap-2"
+                style={{ fontFamily: 'Satoshi, sans-serif' }}
+              >
+                <Palette className="w-4 h-4" />
+                Branding
               </TabsTrigger>
             </TabsList>
 
@@ -193,6 +202,11 @@ export const OrganizationPage: React.FC = () => {
                 emptyStateMessage="No departments found"
                 emptyStateDescription="Create your first department to get started"
               />
+            </TabsContent>
+
+            {/* Branding Tab */}
+            <TabsContent value="branding" className="space-y-4">
+              <BrandingPanel />
             </TabsContent>
           </Tabs>
         </div>

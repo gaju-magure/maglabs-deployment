@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models import Q, Count, Max
 from django.utils import timezone
 from .models import Idea, IdeaLike, ChatSession, ChatMessage, ChatTemplate
+from utils.auth_utils import get_jwt_token_from_request
 from .serializers import (
     IdeaListSerializer,
     IdeaDetailSerializer,
@@ -309,10 +310,28 @@ class IdeaRefineAPIView(APIView):
         
         # Use MagLabs service for idea refinement
         try:
-            service = MagLabsService()
+            # Extract JWT token from request for authentication forwarding
+            auth_token = get_jwt_token_from_request(request)
+            service = MagLabsService(auth_token=auth_token)
             messages = [{"role": "user", "content": f"Please help me refine this idea: {idea_text}"}]
-            result = service.send_message(messages)
+            result = service.send_message(messages, auth_token=auth_token)
             return Response({"refined_idea": result['content']})
+        except ConnectionError as e:
+            error_str = str(e).lower()
+            if 'authentication failed' in error_str or 'invalid or expired jwt token' in error_str:
+                return Response({
+                    'error': 'Authentication failed. Please log in again.',
+                    'error_type': 'authentication_error',
+                    'requires_login': True
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            elif 'access denied' in error_str or 'insufficient permissions' in error_str:
+                return Response({
+                    'error': 'You don\'t have permission to access the AI service.',
+                    'error_type': 'authorization_error'
+                }, status=status.HTTP_403_FORBIDDEN)
+            else:
+                logger.error(f"Connection error refining idea: {e}")
+                return Response({"error": "AI service unavailable. Please try again later."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except Exception as e:
             logger.error(f"Error refining idea: {e}")
             return Response({"error": "Failed to refine idea"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -438,7 +457,9 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         
         # Get AI response
         try:
-            ai_service = MagLabsService()
+            # Extract JWT token from request for authentication forwarding
+            auth_token = get_jwt_token_from_request(request)
+            ai_service = MagLabsService(auth_token=auth_token)
             
             # Build conversation history
             conversation_history = self._build_conversation_history(session)
@@ -456,7 +477,8 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
                 session_id=session.maglabs_session_id,
                 conversation_config=ai_service._get_conversation_config(
                     session.template
-                )
+                ),
+                auth_token=auth_token
             )
             
             # Validate AI response
@@ -518,9 +540,22 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         except ConnectionError as e:
             logger.error(f"Connection error to AI service for session {session.id}: {str(e)}")
             
-            # Check if this is a token limit or session reset scenario
+            # Check if this is an authentication error
             error_str = str(e).lower()
-            if 'token limit' in error_str or 'session' in error_str:
+            if 'authentication failed' in error_str or 'invalid or expired jwt token' in error_str:
+                # Authentication error - user needs to re-login
+                return Response({
+                    'error': 'Authentication failed. Please log in again.',
+                    'error_type': 'authentication_error',
+                    'requires_login': True
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            elif 'access denied' in error_str or 'insufficient permissions' in error_str:
+                # Authorization error - user doesn't have permission
+                return Response({
+                    'error': 'You don\'t have permission to access the AI service.',
+                    'error_type': 'authorization_error'
+                }, status=status.HTTP_403_FORBIDDEN)
+            elif 'token limit' in error_str or 'session' in error_str:
                 try:
                     # Attempt session reset by creating new unique context
                     import uuid
@@ -540,7 +575,8 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
                         session_id=None,  # Force new session
                         conversation_config=ai_service._get_conversation_config(
                             session.template
-                        )
+                        ),
+                        auth_token=auth_token
                     )
                     
                     # Create successful AI message
@@ -818,7 +854,9 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            ai_service = MagLabsService()
+            # Extract JWT token from request for authentication forwarding
+            auth_token = get_jwt_token_from_request(request)
+            ai_service = MagLabsService(auth_token=auth_token)
             
             # Ensure session has fresh context for interview mode
             if not session.maglabs_session_id:
@@ -832,7 +870,8 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             result = ai_service.start_interview_mode(
                 session_id=session.maglabs_session_id,
                 template=session.template,
-                interview_goals=interview_goals
+                interview_goals=interview_goals,
+                auth_token=auth_token
             )
             
             # Validate response

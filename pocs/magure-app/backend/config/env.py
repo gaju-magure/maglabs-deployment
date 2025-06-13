@@ -41,6 +41,8 @@ class _DB:
     port         = config("POSTGRES_PORT",     default="5432", cast=int)
 
 class _JWT:
+    # Use same secret as MagLabs API for token compatibility
+    signing_key            = config("JWT_SECRET", default="change-this-in-production-to-a-secure-random-string")
     access_token_lifetime  = timedelta(days=10)
     refresh_toekn_lifetime = timedelta(days=70)
     rotate_refresh_token   = False,

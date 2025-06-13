@@ -139,6 +139,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 # ---------- REST Framework ----------
 
 SIMPLE_JWT = {
+    "SIGNING_KEY": jwt.signing_key,  # Use same secret as MagLabs API
     "ACCESS_TOKEN_LIFETIME": jwt.access_token_lifetime,
     "REFRESH_TOKEN_LIFETIME":  jwt.refresh_toekn_lifetime,
     "ROTATE_REFRESH_TOKENS": jwt.rotate_refresh_token,

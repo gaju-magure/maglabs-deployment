@@ -59,14 +59,16 @@ class MagLabsService:
     Provides business-focused AI interactions with conversation stage tracking.
     """
     
-    def __init__(self):
+    def __init__(self, auth_token=None):
         self.api_base_url = 'http://localhost:8001/v1/chat/completions'
         self.health_url = 'http://localhost:8001/health'
         self.default_model = "gpt-4o-mini"
         self.timeout = 30.0
+        self.auth_token = auth_token
         
     def create_session(self, user_context: Dict[str, Any], 
-                      template: Optional[Any] = None, initial_message: Optional[str] = None) -> Dict[str, Any]:
+                      template: Optional[Any] = None, initial_message: Optional[str] = None,
+                      auth_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Create a new conversation session with MagLabs API.
         
@@ -74,6 +76,7 @@ class MagLabsService:
             user_context: User information (role, department, name, etc.)
             template: Optional ChatTemplate instance for configuration
             initial_message: Optional custom initial message
+            auth_token: Optional JWT token for authentication
             
         Returns:
             Dict containing session_id and initial response
@@ -94,14 +97,16 @@ class MagLabsService:
         return self.send_message(
             messages=messages,
             user_context=user_context,
-            conversation_config=config
+            conversation_config=config,
+            auth_token=auth_token
         )
     
     def send_message(self, 
                     messages: List[Dict[str, str]], 
                     user_context: Optional[Dict] = None,
                     session_id: Optional[str] = None,
-                    conversation_config: Optional[Dict] = None) -> Dict[str, Any]:
+                    conversation_config: Optional[Dict] = None,
+                    auth_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Send message to MagLabs API and get structured response.
         
@@ -110,6 +115,7 @@ class MagLabsService:
             user_context: User context information
             session_id: Optional existing session ID
             conversation_config: Configuration from template
+            auth_token: Optional JWT token for authentication
             
         Returns:
             Dict with 'content', 'session_id', 'stage', 'progress', and 'metadata'
@@ -148,6 +154,11 @@ class MagLabsService:
         
         if session_id:
             headers['X-Session-ID'] = session_id
+        
+        # Add JWT token for authentication if provided (prioritize parameter over instance)
+        token_to_use = auth_token or self.auth_token
+        if token_to_use:
+            headers['Authorization'] = f'Bearer {token_to_use}'
         
         try:
             # Check API health first
@@ -219,14 +230,22 @@ class MagLabsService:
             response_text = e.response.text if hasattr(e.response, 'text') else str(e)
             logger.error(f"Response text: {response_text}")
             
-            if e.response.status_code >= 500:
+            if e.response.status_code == 401:
+                # Authentication failed - JWT token invalid or expired
+                logger.error("Authentication failed with MagLabs API - invalid or expired JWT token")
+                raise ConnectionError("Authentication failed: Invalid or expired JWT token. Please log in again.")
+            elif e.response.status_code == 403:
+                # Authorization failed - JWT token valid but insufficient permissions
+                logger.error("Authorization failed with MagLabs API - insufficient permissions")
+                raise ConnectionError("Access denied: You don't have permission to access this AI service.")
+            elif e.response.status_code >= 500:
                 # Try retry with new session for 500 errors (likely token limit)
                 logger.info("500 error detected, attempting retry with new session")
-                return self._retry_with_new_session(messages, user_context, conversation_config)
+                return self._retry_with_new_session(messages, user_context, conversation_config, auth_token)
             elif e.response.status_code == 422:
                 # Unprocessable entity - likely invalid metadata format, try retry
                 logger.info("422 error detected, attempting retry with new session")
-                return self._retry_with_new_session(messages, user_context, conversation_config)
+                return self._retry_with_new_session(messages, user_context, conversation_config, auth_token)
             else:
                 try:
                     error_detail = e.response.json()
@@ -240,7 +259,8 @@ class MagLabsService:
     
     def _retry_with_new_session(self, messages: List[Dict[str, str]], 
                                user_context: Optional[Dict],
-                               conversation_config: Dict) -> Dict[str, Any]:
+                               conversation_config: Dict,
+                               auth_token: Optional[str] = None) -> Dict[str, Any]:
         """Retry the request with a forced new session by changing user context."""
         import uuid
         import time
@@ -289,6 +309,11 @@ class MagLabsService:
         }
         
         headers = {'Content-Type': 'application/json'}
+        
+        # Add JWT token for authentication if provided
+        token_to_use = auth_token or self.auth_token
+        if token_to_use:
+            headers['Authorization'] = f'Bearer {token_to_use}'
         
         try:
             with httpx.Client(timeout=self.timeout) as client:
@@ -341,6 +366,16 @@ class MagLabsService:
                 }
             }
             
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401:
+                logger.error("Authentication failed during session retry - invalid or expired JWT token")
+                raise ConnectionError("Authentication failed: Invalid or expired JWT token. Please log in again.")
+            elif e.response.status_code == 403:
+                logger.error("Authorization failed during session retry - insufficient permissions")
+                raise ConnectionError("Access denied: You don't have permission to access this AI service.")
+            else:
+                logger.error(f"HTTP error during session retry: {e.response.status_code}")
+                raise ConnectionError("Unable to create new conversation session")
         except Exception as e:
             logger.error(f"Failed to create new session: {e}")
             raise ConnectionError("Unable to create new conversation session")
@@ -484,7 +519,7 @@ class MagLabsService:
         return starters.get(conversation_type, starters['brainstorm'])
     
     def start_interview_mode(self, session_id: str, template: Optional[Any] = None, 
-                           interview_goals: Optional[str] = None) -> Dict[str, Any]:
+                           interview_goals: Optional[str] = None, auth_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Activate structured interview mode for an existing session.
         
@@ -492,6 +527,7 @@ class MagLabsService:
             session_id: Existing MagLabs session ID
             template: Template to configure interview for
             interview_goals: Specific goals for this interview
+            auth_token: Optional JWT token for authentication
             
         Returns:
             Dict with interview activation confirmation and next steps
@@ -513,11 +549,12 @@ class MagLabsService:
         return self.send_message(
             messages=[{"role": "user", "content": interview_prompt}],
             session_id=session_id,
-            conversation_config=config
+            conversation_config=config,
+            auth_token=auth_token
         )
     
     def advance_to_stage(self, session_id: str, target_stage: str, 
-                        template: Optional[Any] = None) -> Dict[str, Any]:
+                        template: Optional[Any] = None, auth_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Request advancement to a specific interview stage.
         
@@ -525,6 +562,7 @@ class MagLabsService:
             session_id: MagLabs session ID
             target_stage: Stage to advance to
             template: Current template
+            auth_token: Optional JWT token for authentication
             
         Returns:
             Dict with stage advancement response
@@ -539,5 +577,6 @@ class MagLabsService:
         return self.send_message(
             messages=[{"role": "user", "content": stage_message}],
             session_id=session_id,
-            conversation_config=config
+            conversation_config=config,
+            auth_token=auth_token
         )

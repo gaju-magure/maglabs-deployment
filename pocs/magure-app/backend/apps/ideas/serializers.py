@@ -406,6 +406,7 @@ class ChatSessionCreateSerializer(serializers.ModelSerializer):
         # If initial_message provided, create it and get AI response
         if initial_message:
             from services.ai_services.maglabs_service import MagLabsService
+            from utils.auth_utils import get_jwt_token_from_request
             
             # Create user message
             user_message = ChatMessage.objects.create(
@@ -417,12 +418,16 @@ class ChatSessionCreateSerializer(serializers.ModelSerializer):
             )
             
             try:
+                # Extract JWT token from request for authentication forwarding
+                auth_token = get_jwt_token_from_request(self.context.get('request'))
+                
                 # Get AI response to initialize MagLabs session
-                ai_service = MagLabsService()
+                ai_service = MagLabsService(auth_token=auth_token)
                 ai_response_data = ai_service.create_session(
                     user_context=session.context_metadata,
                     template=template,
-                    initial_message=initial_message
+                    initial_message=initial_message,
+                    auth_token=auth_token
                 )
                 
                 # Create AI response message

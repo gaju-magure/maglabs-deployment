@@ -3,6 +3,14 @@ from django.conf import settings
 from django.utils import timezone
 import uuid
 
+
+def default_list():
+    return []
+
+
+def default_dict():
+    return {}
+
 class Idea(models.Model):
     STATUS_CHOICES = [
         ('submitted', 'Submitted'),
@@ -245,11 +253,11 @@ class ChatSession(models.Model):
         help_text="Type of interview flow (business_idea, problem_analysis, etc.)"
     )
     target_stages = models.JSONField(
-        default=list,
+        default=default_list,
         help_text="Stages this session aims to complete"
     )
     completed_stages = models.JSONField(
-        default=list,
+        default=default_list,
         help_text="Stages that have been completed"
     )
     interview_goals = models.TextField(
@@ -268,7 +276,7 @@ class ChatSession(models.Model):
     
     # Context from user profile
     context_metadata = models.JSONField(
-        default=dict,
+        default=default_dict,
         help_text="Stores department, role, and other user context"
     )
     
@@ -311,6 +319,29 @@ class ChatSession(models.Model):
     def can_submit_idea(self):
         """Check if this session can be converted to an idea"""
         return not self.is_idea_submitted and self.message_count > 0
+    
+    def get_latest_stage_progression(self):
+        """Get stage progression from the most recent assistant message."""
+        latest_assistant_message = self.messages.filter(
+            role='assistant'
+        ).order_by('-created_at').first()
+        
+        if latest_assistant_message:
+            return latest_assistant_message.get_stage_data()
+        
+        return {
+            'stage_name': 'initialization',
+            'stage_completion': {},
+            'business_context': {},
+            'transition_ready': False,
+            'conversation_health': None,
+            'next_stage': None
+        }
+    
+    def get_current_stage_name(self):
+        """Get current stage name from latest message."""
+        stage_data = self.get_latest_stage_progression()
+        return stage_data.get('stage_name', 'initialization')
 
 
 class ChatMessage(models.Model):
@@ -353,8 +384,8 @@ class ChatMessage(models.Model):
     
     # AI response metadata
     ai_metadata = models.JSONField(
-        default=dict,
-        help_text="Stores model info, tokens used, processing time, etc."
+        default=default_dict,
+        help_text="Stores model info, tokens used, processing time, stage progression, and MagLabs metadata"
     )
     
     # Message organization
@@ -384,6 +415,29 @@ class ChatMessage(models.Model):
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    def get_stage_data(self):
+        """Extract stage progression data from ai_metadata."""
+        return {
+            'stage_name': self.ai_metadata.get('stage_name'),
+            'stage_completion': self.ai_metadata.get('stage_completion', {}),
+            'business_context': self.ai_metadata.get('business_context', {}),
+            'transition_ready': self.ai_metadata.get('transition_ready', False),
+            'conversation_health': self.ai_metadata.get('conversation_health'),
+            'next_stage': self.ai_metadata.get('next_stage')
+        }
+    
+    def get_completion_scores(self):
+        """Get stage completion scores."""
+        return self.ai_metadata.get('stage_completion', {})
+    
+    def get_business_scores(self):
+        """Get business context scores (problem_clarity, solution_readiness, etc.)."""
+        return self.ai_metadata.get('business_context', {})
+    
+    def is_stage_transition_ready(self):
+        """Check if ready to transition to next stage."""
+        return self.ai_metadata.get('transition_ready', False)
     
     class Meta:
         ordering = ['sequence_number']
@@ -417,11 +471,11 @@ class ChatTemplate(models.Model):
         help_text="Type of interview flow in MagLabs API"
     )
     expected_stages = models.JSONField(
-        default=list,
+        default=default_list,
         help_text="List of stages this template expects to complete"
     )
     stage_prompts = models.JSONField(
-        default=dict,
+        default=default_dict,
         help_text="Custom prompts or instructions for specific stages"
     )
     conversation_goals = models.TextField(
@@ -435,7 +489,7 @@ class ChatTemplate(models.Model):
         help_text="AI creativity level (0.0-2.0)"
     )
     focus_stages = models.JSONField(
-        default=list,
+        default=default_list,
         help_text="Stages to emphasize in this conversation type"
     )
     

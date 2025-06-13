@@ -92,71 +92,38 @@ export const ChatHelpModal: React.FC<ChatHelpModalProps> = ({ isOpen, onClose })
             </CardContent>
           </Card>
 
-          {/* Conversation Types */}
+          {/* Available Templates */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-blue-600" />
-                Conversation Types
+                Starter Templates
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <Lightbulb className="h-5 w-5 text-yellow-500 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold">Brainstorming</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Generate new ideas and explore creative solutions
-                      </p>
-                      <Badge variant="secondary" className="text-xs mt-1">
-                        Best for: Initial ideation
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="h-5 w-5 text-purple-500 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold">Idea Refinement</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Polish and develop existing ideas into detailed proposals
-                      </p>
-                      <Badge variant="secondary" className="text-xs mt-1">
-                        Best for: Existing ideas
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <Settings className="h-5 w-5 text-green-500 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold">Problem Solving</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Find solutions to specific challenges or inefficiencies
-                      </p>
-                      <Badge variant="secondary" className="text-xs mt-1">
-                        Best for: Specific problems
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <MessageSquare className="h-5 w-5 text-blue-500 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold">General Chat</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Open-ended conversations about any topic
-                      </p>
-                      <Badge variant="secondary" className="text-xs mt-1">
-                        Best for: Exploration
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Choose from a variety of templates to kickstart your conversation with AI. Each template provides a focused starting point for different types of discussions.
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-900 mb-2">💡 How Templates Work:</h4>
+                <ul className="space-y-1 text-sm text-blue-800">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-3 w-3" />
+                    Provide structured starting prompts for specific scenarios
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-3 w-3" />
+                    Guide the AI to understand your context quickly
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-3 w-3" />
+                    Can be customized after starting the conversation
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-3 w-3" />
+                    Choose "General Chat" for open-ended discussions
+                  </li>
+                </ul>
               </div>
             </CardContent>
           </Card>

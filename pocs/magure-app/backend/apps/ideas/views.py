@@ -466,14 +466,26 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             if not ai_response_data['content'].strip():
                 raise ValueError("AI service returned empty response")
             
-            # Create AI message
+            # Prepare comprehensive AI metadata including stage progression
+            comprehensive_metadata = {
+                **ai_response_data.get('metadata', {}),  # Include original metadata
+                **ai_response_data.get('stage_data', {}),  # Include enhanced stage progression data
+                # Legacy fields for backward compatibility
+                'session_id': ai_response_data.get('session_id'),
+                'stage': ai_response_data.get('stage'),
+                'stage_progress': ai_response_data.get('stage_progress'),
+                'conversation_health': ai_response_data.get('conversation_health'),
+                'suggested_actions': ai_response_data.get('suggested_actions', [])
+            }
+            
+            # Create AI message with comprehensive metadata
             ai_message = ChatMessage.objects.create(
                 session=session,
                 role='assistant',
                 content=ai_response_data['content'],
                 message_type='text',
                 sequence_number=last_sequence + 2,
-                ai_metadata=ai_response_data.get('metadata', {}),
+                ai_metadata=comprehensive_metadata,
                 is_processed=True
             )
             

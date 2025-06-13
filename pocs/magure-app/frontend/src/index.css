@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide scrollbars */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
 
 @layer base {
@@ -117,5 +126,194 @@
   
   .modal-focus-padding {
     @apply px-1;
+  }
+  
+  /* Chat Design Tokens */
+  :root {
+    /* Chat Colors */
+    --chat-bg: #ffffff;
+    --chat-message-user-bg: #10a37f;
+    --chat-message-user-text: #ffffff;
+    --chat-message-ai-bg: #f7f7f8;
+    --chat-message-ai-text: #374151;
+    --chat-message-system-bg: #f3f4f6;
+    --chat-message-system-text: #6b7280;
+    --chat-message-error-bg: #fef2f2;
+    --chat-message-error-text: #dc2626;
+    --chat-input-border: #e5e7eb;
+    --chat-input-focus: #10a37f;
+    --chat-text-primary: #111827;
+    --chat-text-secondary: #6b7280;
+    --chat-border: #e5e7eb;
+    --chat-shadow-subtle: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    --chat-shadow-medium: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    
+    /* Chat Spacing */
+    --chat-space-xs: 4px;
+    --chat-space-sm: 8px;
+    --chat-space-md: 16px;
+    --chat-space-lg: 24px;
+    --chat-space-xl: 32px;
+    
+    /* Chat Typography */
+    --chat-text-sm: 12px;
+    --chat-text-base: 14px;
+    --chat-text-lg: 16px;
+    --chat-line-height: 1.5;
+    
+    /* Chat Border Radius */
+    --chat-radius-sm: 8px;
+    --chat-radius-md: 12px;
+    --chat-radius-lg: 16px;
+    --chat-radius-full: 50%;
+  }
+  
+  /* Chat Layout Components */
+  .chat-container {
+    background: var(--chat-bg);
+    color: var(--chat-text-primary);
+  }
+  
+  .chat-message-user {
+    background: var(--chat-message-user-bg);
+    color: var(--chat-message-user-text);
+    border-radius: var(--chat-radius-md);
+    padding: var(--chat-space-md);
+    margin-bottom: var(--chat-space-md);
+    max-width: 80%;
+    margin-left: auto;
+    margin-right: 0;
+  }
+  
+  .chat-message-ai {
+    background: var(--chat-message-ai-bg);
+    color: var(--chat-message-ai-text);
+    border-radius: var(--chat-radius-md);
+    padding: var(--chat-space-md);
+    margin-bottom: var(--chat-space-md);
+    max-width: 80%;
+    margin-left: 0;
+    margin-right: auto;
+  }
+  
+  .chat-input {
+    background: var(--chat-bg);
+    border: 1px solid var(--chat-input-border);
+    border-radius: var(--chat-radius-md);
+    padding: var(--chat-space-md);
+    font-size: var(--chat-text-base);
+    line-height: var(--chat-line-height);
+    transition: border-color 0.2s ease;
+  }
+  
+  .chat-input:focus {
+    outline: none;
+    border-color: var(--chat-input-focus);
+    box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
+  }
+  
+  .chat-send-button {
+    background: var(--chat-message-user-bg);
+    color: var(--chat-message-user-text);
+    border: none;
+    border-radius: var(--chat-radius-full);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .chat-send-button:hover:not(:disabled) {
+    background: #0d8c6b;
+    transform: scale(1.05);
+  }
+  
+  .chat-send-button:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  .chat-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--chat-radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .chat-avatar-user {
+    background: var(--chat-message-user-bg);
+    color: var(--chat-message-user-text);
+  }
+  
+  .chat-avatar-ai {
+    background: #6b7280;
+    color: #ffffff;
+  }
+  
+  .chat-template-card {
+    background: var(--chat-bg);
+    border: 1px solid var(--chat-border);
+    border-radius: var(--chat-radius-md);
+    padding: var(--chat-space-md);
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .chat-template-card:hover {
+    box-shadow: var(--chat-shadow-medium);
+    transform: scale(1.02);
+    border-color: var(--chat-input-focus);
+  }
+  
+  /* Glass Input Effects */
+  .glass-input {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  .glass-input:focus {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  /* Glass Animation Effects */
+  .glass-fade-in {
+    animation: glassFadeIn 0.5s ease-out;
+  }
+  
+  @keyframes glassFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+      backdrop-filter: blur(0px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      backdrop-filter: blur(20px);
+    }
+  }
+  
+  /* Glass Reflection Effect */
+  .glass-reflect::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+    border-radius: inherit;
+    pointer-events: none;
   }
 }

@@ -322,22 +322,19 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
 
   return (
     <>
-      <div className="flex h-full relative overflow-hidden">
-        {/* Glass Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/50 via-blue-50/30 to-purple-50/30 backdrop-blur-sm" />
-        
+      <div className="flex h-full chat-container">
         {/* Main Chat Area */}
-        <div className="flex flex-col flex-1 min-w-0 relative z-10">
+        <div className="flex flex-col flex-1 min-w-0">
           {/* Header - Only show for existing sessions */}
           {session && (
             <>
-              <div className="glass-container bg-white/40 backdrop-blur-md border-b border-white/30 shadow-lg">
-                <div className="flex items-center justify-between pl-16 pr-6 py-4">
+              <div className="bg-white border-b border-gray-200 px-6 py-4">
+                <div className="flex items-center justify-between max-w-4xl mx-auto pl-10">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h2 className="text-lg font-semibold">{session.title}</h2>
                       {isInInterviewMode && (
-                        <div className="glass-container bg-gradient-to-r from-purple-500/30 to-pink-500/30 backdrop-blur-sm border border-purple-400/40 px-3 py-1 rounded-full shadow-lg">
+                        <div className="bg-purple-100 border border-purple-200 px-3 py-1 rounded-full">
                           <span className="text-purple-800 text-xs font-medium flex items-center gap-1">
                             <Sparkles size={12} />
                             Interview Mode
@@ -360,48 +357,42 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
                       )}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {/* Progress bar for all conversations */}
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="glass-container bg-white/30 backdrop-blur-sm border border-white/40 rounded-lg px-3 py-2 cursor-pointer hover:bg-white/40 transition-all duration-300 hover:scale-105 shadow-lg"
-                        onClick={() => setShowProgressPanel(!showProgressPanel)}
-                        title="Click to view detailed progress"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            {stageList.map((stage, index) => (
-                              <div 
-                                key={stage.id}
-                                className={`w-2 h-2 rounded-full transition-all duration-300 shadow-sm ${
-                                  index <= currentStageIndex ? stage.color : 'bg-gray-300'
-                                } ${index === currentStageIndex ? 'ring-2 ring-offset-1 ring-blue-400 scale-125' : ''}`}
-                                title={`Stage ${index + 1}`}
-                              />
-                            ))}
-                          </div>
-                          <BarChart3 size={14} className="text-gray-600" />
-                        </div>
+                  <div className="flex items-center gap-3">
+                    {/* Simplified progress indicator */}
+                    <button 
+                      className="flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                      onClick={() => setShowProgressPanel(!showProgressPanel)}
+                      title="View conversation progress"
+                    >
+                      <div className="flex items-center gap-1">
+                        {stageList.map((stage, index) => (
+                          <div 
+                            key={stage.id}
+                            className={`w-2 h-2 rounded-full transition-colors ${
+                              index <= currentStageIndex ? stage.color : 'bg-gray-300'
+                            }`}
+                          />
+                        ))}
                       </div>
-                    </div>
+                      <BarChart3 size={14} className="text-gray-500" />
+                    </button>
+                    
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowHelpModal(true)}
-                      className="gap-2 glass-container bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30 text-gray-700 hover:text-gray-900 transition-all duration-300 hover:scale-105"
+                      className="text-gray-600 hover:text-gray-800 hover:bg-gray-100"
                     >
                       <HelpCircle size={16} />
-                      Help
                     </Button>
                     {session.can_submit_idea && !session.is_idea_submitted && (
                       <Button
-                        variant="outline"
                         size="sm"
                         onClick={() => setShowSubmitDialog(true)}
-                        className="gap-2 glass-container bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-sm border border-green-400/40 hover:from-green-500/30 hover:to-emerald-500/30 text-green-700 hover:text-green-800 transition-all duration-300 hover:scale-105 shadow-lg"
+                        className="gap-2 bg-green-600 hover:bg-green-700 text-white"
                       >
                         <Lightbulb size={16} />
-                        Submit as Idea
+                        Submit Idea
                       </Button>
                     )}
                     {!isInInterviewMode && session.message_count === 0 && (
@@ -410,10 +401,10 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
                         size="sm"
                         onClick={handleStartInterview}
                         disabled={startInterviewMutation.isPending}
-                        className="gap-2 glass-container bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-purple-400/40 hover:from-purple-500/30 hover:to-pink-500/30 text-purple-700 hover:text-purple-800 transition-all duration-300 hover:scale-105 shadow-lg"
+                        className="gap-2 border-purple-300 text-purple-700 hover:bg-purple-50"
                       >
                         <Sparkles size={16} />
-                        Start Interview
+                        Interview Mode
                       </Button>
                     )}
                     <DropdownMenu>
@@ -449,47 +440,45 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
               
               {/* Token Usage Warning */}
               {isTokenUsageWarning && (
-                <div className={`glass-container backdrop-blur-md border-b shadow-lg ${
+                <div className={`border-b px-6 py-3 ${
                   isTokenUsageHigh 
-                    ? 'bg-gradient-to-r from-red-500/20 to-pink-500/20 border-red-300/40' 
-                    : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-300/40'
+                    ? 'bg-red-50 border-red-200' 
+                    : 'bg-amber-50 border-amber-200'
                 }`}>
-                  <div className="px-6 py-3">
-                    <div className="max-w-3xl mx-auto flex items-center gap-3">
-                      <AlertTriangle className={`w-5 h-5 ${
-                        isTokenUsageHigh ? 'text-red-600' : 'text-amber-600'
-                      }`} />
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium ${
-                          isTokenUsageHigh ? 'text-red-800' : 'text-amber-800'
-                        }`}>
-                          {isTokenUsageHigh 
-                            ? 'Session approaching token limit' 
-                            : 'High token usage detected'
-                          }
-                        </p>
-                        <p className={`text-xs ${
-                          isTokenUsageHigh ? 'text-red-700' : 'text-amber-700'
-                        }`}>
-                          {isTokenUsageHigh
-                            ? 'Consider starting a new session to avoid interruptions'
-                            : 'This session may reach token limits soon'
-                          }
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => window.location.href = '/dashboard/chat'}
-                        className={`${
-                          isTokenUsageHigh 
-                            ? 'border-red-300 text-red-700 hover:bg-red-100' 
-                            : 'border-amber-300 text-amber-700 hover:bg-amber-100'
-                        } text-xs`}
-                      >
-                        Start New Session
-                      </Button>
+                  <div className="max-w-4xl mx-auto flex items-center gap-3">
+                    <AlertTriangle className={`w-5 h-5 ${
+                      isTokenUsageHigh ? 'text-red-600' : 'text-amber-600'
+                    }`} />
+                    <div className="flex-1">
+                      <p className={`text-sm font-medium ${
+                        isTokenUsageHigh ? 'text-red-800' : 'text-amber-800'
+                      }`}>
+                        {isTokenUsageHigh 
+                          ? 'Session approaching token limit' 
+                          : 'High token usage detected'
+                        }
+                      </p>
+                      <p className={`text-xs ${
+                        isTokenUsageHigh ? 'text-red-700' : 'text-amber-700'
+                      }`}>
+                        {isTokenUsageHigh
+                          ? 'Consider starting a new session to avoid interruptions'
+                          : 'This session may reach token limits soon'
+                        }
+                      </p>
                     </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.location.href = '/dashboard/chat'}
+                      className={`${
+                        isTokenUsageHigh 
+                          ? 'border-red-300 text-red-700 hover:bg-red-100' 
+                          : 'border-amber-300 text-amber-700 hover:bg-amber-100'
+                      }`}
+                    >
+                      New Session
+                    </Button>
                   </div>
                 </div>
               )}
@@ -500,81 +489,78 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
           <div className="flex-1 overflow-hidden">
             {isEmptyChat ? (
               // Empty chat state with template badges
-              <div className="h-full flex flex-col overflow-y-auto overflow-x-hidden">
-                <div className="max-w-4xl mx-auto px-2 sm:px-4 lg:px-6 overflow-hidden w-full">
-                  <div className="min-h-[50vh] flex flex-col justify-center py-8">
-                    <div className="text-center mb-8 sm:mb-12">
-                      <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-2 sm:mb-3">
+              <div className="h-full flex flex-col">
+                <div className="flex-1 flex flex-col justify-center px-6 py-12">
+                  <div className="max-w-2xl mx-auto text-center">
+                    <div className="mb-12">
+                      <h1 className="text-3xl font-semibold text-gray-900 mb-3">
                         How can I help you today?
                       </h1>
-                      <p className="text-base sm:text-lg text-gray-600">
-                        Start typing or choose a template
+                      <p className="text-lg text-gray-600">
+                        Start a conversation or choose a template below
                       </p>
                     </div>
                     
-                    {/* Template Badges */}
-                    <div className="w-full overflow-hidden">
-                      <ScrollArea className="w-full">
-                        <div className="flex gap-2 pb-2 px-1 sm:px-2 overflow-x-auto scrollbar-hide">
-                          {(isMobile ? templateBadges.slice(0, 5) : templateBadges).map((badge, index) => (
-                            <Badge
-                              key={index}
-                              variant="outline"
-                              className={`glass-container bg-white/20 backdrop-blur-sm border-white/30 hover:bg-white/30 hover:scale-[1.05] transition-all duration-300 cursor-pointer px-3 py-1.5 sm:px-4 sm:py-2 whitespace-nowrap shadow-lg text-sm sm:text-base
-                                ${badge.color === 'blue' && 'hover:border-blue-400/50 hover:text-blue-700'}
-                                ${badge.color === 'purple' && 'hover:border-purple-400/50 hover:text-purple-700'}
-                                ${badge.color === 'green' && 'hover:border-green-400/50 hover:text-green-700'}
-                                ${badge.color === 'indigo' && 'hover:border-indigo-400/50 hover:text-indigo-700'}
-                                ${badge.color === 'orange' && 'hover:border-orange-400/50 hover:text-orange-700'}
-                                ${badge.color === 'pink' && 'hover:border-pink-400/50 hover:text-pink-700'}
-                                ${badge.color === 'emerald' && 'hover:border-emerald-400/50 hover:text-emerald-700'}
-                                ${badge.color === 'cyan' && 'hover:border-cyan-400/50 hover:text-cyan-700'}
-                              `}
-                              onClick={() => handleBadgeClick(badge)}
-                            >
-                              <span className="text-base sm:text-lg mr-1.5 sm:mr-2">{badge.icon}</span>
-                              <span className="font-medium">{badge.name}</span>
-                            </Badge>
-                          ))}
+                    {/* Template Cards */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      {templateBadges.map((badge, index) => (
+                        <div
+                          key={index}
+                          className="chat-template-card text-left"
+                          onClick={() => handleBadgeClick(badge)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{badge.icon}</span>
+                            <div>
+                              <h3 className="font-medium text-gray-900 text-sm">{badge.name}</h3>
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                {badge.prompt}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <ScrollBar orientation="horizontal" className="mt-1" />
-                      </ScrollArea>
+                      ))}
                     </div>
                   </div>
                 </div>
               </div>
             ) : (
               // Existing chat messages
-              <ScrollArea className="flex-1 px-6">
-                <div className="max-w-3xl mx-auto py-6 space-y-6">
+              <ScrollArea className="flex-1">
+                <div className="max-w-4xl mx-auto px-6 py-8">
                   {session.messages.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <MessageSquare className="h-8 w-8 text-gray-400" />
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-700 mb-2">Ready to start</h3>
-                        <p className="text-gray-500 text-sm">
-                          Type your message below to begin the conversation
-                        </p>
+                    <div className="flex flex-col items-center justify-center h-64 text-center">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <MessageSquare className="h-6 w-6 text-gray-400" />
                       </div>
+                      <h3 className="text-lg font-medium text-gray-700 mb-2">Ready to chat</h3>
+                      <p className="text-gray-500 text-sm">
+                        Type your message below to start the conversation
+                      </p>
                     </div>
                   ) : (
-                    session.messages.map((msg) => (
-                      <ChatMessage key={msg.id} message={msg} />
-                    ))
+                    <div className="space-y-1">
+                      {session.messages.map((msg) => (
+                        <ChatMessage key={msg.id} message={msg} />
+                      ))}
+                    </div>
                   )}
                   {isProcessing && (
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <RefreshCw className="animate-spin" size={16} />
-                      <span>
-                        {startInterviewMutation.isPending 
-                          ? 'Starting interview mode...' 
-                          : isCreatingSession
-                          ? 'Starting conversation...'
-                          : 'AI is thinking...'
-                        }
-                      </span>
+                    <div className="flex items-center gap-3 mt-6 mb-2">
+                      <div className="chat-avatar chat-avatar-ai">
+                        <Bot size={16} />
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-500">
+                        <RefreshCw className="animate-spin" size={16} />
+                        <span className="text-sm">
+                          {startInterviewMutation.isPending 
+                            ? 'Starting interview mode...' 
+                            : isCreatingSession
+                            ? 'Starting conversation...'
+                            : 'AI is thinking...'
+                          }
+                        </span>
+                      </div>
                     </div>
                   )}
                   <div ref={messagesEndRef} />
@@ -584,66 +570,46 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
           </div>
           
           {/* Input Area */}
-          <div className={`glass-container bg-white/40 backdrop-blur-md border-t border-white/30 shadow-lg ${
-            isEmptyChat ? 'shrink-0' : ''
-          }`}>
-            <div className={`px-6 py-4 ${isEmptyChat ? 'max-w-3xl mx-auto' : ''}`}>
-              <div className={`glass-container bg-white/30 backdrop-blur-sm rounded-xl p-4 border border-white/40 shadow-lg ${
-                isEmptyChat ? 'max-w-none' : 'max-w-3xl mx-auto'
-              }`}>
-                <div className="space-y-3">
-                  <Textarea
-                    ref={textareaRef}
-                    value={message}
-                    onChange={handleTextareaChange}
-                    onKeyDown={handleKeyDown}
-                    placeholder={
-                      isEmptyChat 
-                        ? "Send a message..." 
-                        : isTokenUsageHigh 
-                        ? "Session token limit reached. Please start a new session." 
-                        : "Type your message..."
-                    }
-                    className={`${
-                      isEmptyChat 
-                        ? 'min-h-[44px] sm:min-h-[52px] py-2.5 bg-white/60 backdrop-blur-sm border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0' 
-                        : 'min-h-[80px] bg-white/50 backdrop-blur-sm border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0'
-                    } w-full resize-none transition-all duration-300 text-gray-900 placeholder:text-gray-500`}
-                    disabled={isProcessing || isTokenUsageHigh}
-                    rows={isEmptyChat ? 1 : undefined}
-                    style={isEmptyChat ? { minHeight: '44px' } : undefined}
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      className="glass-container bg-gradient-to-r from-blue-500/90 to-purple-500/90 hover:from-blue-600/90 hover:to-purple-600/90 border-0 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      onClick={handleSend}
-                      disabled={!message.trim() || isProcessing || isTokenUsageHigh}
-                    >
-                      <Send size={16} className="text-white" />
-                      <span className="text-white">Send</span>
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
-                  <span className={isEmptyChat ? "hidden sm:inline" : ""}>
-                    Press Enter to send, Shift+Enter for new line
-                  </span>
-                  {isEmptyChat && <span className="sm:hidden">Enter to send</span>}
+          <div className="border-t border-gray-200 bg-white px-6 py-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="relative bg-white border border-gray-300 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                <Textarea
+                  ref={textareaRef}
+                  value={message}
+                  onChange={handleTextareaChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    isTokenUsageHigh 
+                      ? "Session token limit reached. Please start a new session." 
+                      : "Message AI Assistant..."
+                  }
+                  className="chat-input min-h-[52px] w-full pr-12 resize-none border-0 bg-transparent p-0 text-gray-900 placeholder:text-gray-500 focus:ring-0"
+                  disabled={isProcessing || isTokenUsageHigh}
+                  rows={1}
+                />
+                <button
+                  className="chat-send-button absolute bottom-3 right-3"
+                  onClick={handleSend}
+                  disabled={!message.trim() || isProcessing || isTokenUsageHigh}
+                >
+                  <Send size={16} />
+                </button>
+              </div>
+              <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
+                <span>Press Enter to send, Shift+Enter for new line</span>
+                <div className="flex items-center gap-4">
                   <span>
                     {isProcessing 
                       ? (isCreatingSession ? 'Starting...' : 'Processing...') 
-                      : isEmptyChat 
-                      ? 'Ready' 
                       : 'Ready'
                     }
                   </span>
                   {!isEmptyChat && !isProcessing && (
                     <button
                       onClick={() => setShowHelpModal(true)}
-                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                      className="text-blue-600 hover:text-blue-800 hover:underline"
                     >
-                      Need help?
+                      Help
                     </button>
                   )}
                 </div>
@@ -654,16 +620,17 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
         
         {/* Progress Panel - Only for existing sessions */}
         {session && showProgressPanel && (
-          <div className="w-80 border-l border-gray-200 bg-gray-50">
+          <div className="w-80 border-l border-gray-200 bg-white">
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">
-                  Conversation Progress
+                <h3 className="font-semibold text-gray-900 text-sm">
+                  Progress
                 </h3>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowProgressPanel(false)}
+                  className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
                 >
                   <ChevronRight size={16} />
                 </Button>

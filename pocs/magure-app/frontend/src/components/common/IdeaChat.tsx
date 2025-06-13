@@ -244,3 +244,4 @@ export const IdeaChat: React.FC = () => {
     </div>
   );
 };
+

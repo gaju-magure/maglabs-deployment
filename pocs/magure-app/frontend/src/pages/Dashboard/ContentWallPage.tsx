@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Pin, Loader2, Sparkles, Clock, User, Heart, Search, X, Building2, Briefcase, Filter, BarChart3 } from 'lucide-react';
-import { getContentWallIdeas, toggleIdeaPin, likeIdea, unlikeIdea, getIdeaAnalytics, type Idea, type IdeaAnalytics } from '@/services/ideasApi';
+import { getContentWallIdeas, toggleIdeaPin, likeIdea, unlikeIdea, getIdeaAnalytics, getIdeasWithFilters, type Idea, type IdeaAnalytics } from '@/services/ideasApi';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { IdeaDetailModal } from '@/components/common/IdeaDetailModal';
 import { StatusBadge, PriorityBadge } from '@/components/common/StatusBadge';
+import { StatusTransitionButton } from '@/components/common/StatusTransitionButton';
 import { 
   Select,
   SelectContent,
@@ -40,6 +41,7 @@ export const ContentWallPage: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<string | undefined>();
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
   const [selectedPriority, setSelectedPriority] = useState<string | undefined>();
+  const [selectedAssignee, setSelectedAssignee] = useState<string | undefined>();
   const [analytics, setAnalytics] = useState<IdeaAnalytics | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const { toast } = useToast();
@@ -157,6 +159,19 @@ export const ContentWallPage: React.FC = () => {
       }
     }
     
+    // Assignee filter (only for admins)
+    if (isAdmin && selectedAssignee && selectedAssignee !== 'all') {
+      if (selectedAssignee === 'me') {
+        if (!idea.assigned_to_name || idea.assigned_to !== user?.id) {
+          return false;
+        }
+      } else if (selectedAssignee === 'unassigned') {
+        if (idea.assigned_to) {
+          return false;
+        }
+      }
+    }
+    
     return true;
   });
 
@@ -184,6 +199,7 @@ export const ContentWallPage: React.FC = () => {
           if (selectedRole) params.append('role', selectedRole);
           if (selectedStatus && selectedStatus !== 'all') params.append('status', selectedStatus);
           if (selectedPriority && selectedPriority !== 'all') params.append('priority', selectedPriority);
+          if (selectedAssignee && selectedAssignee !== 'all') params.append('assigned_to', selectedAssignee);
         }
         if (searchQuery.trim()) params.append('search', searchQuery.trim());
         
@@ -205,7 +221,7 @@ export const ContentWallPage: React.FC = () => {
     const debounceTimer = setTimeout(loadIdeas, 300);
     
     return () => clearTimeout(debounceTimer);
-  }, [toast, selectedDepartment, selectedRole, selectedStatus, selectedPriority, searchQuery, isAdmin]);
+  }, [toast, selectedDepartment, selectedRole, selectedStatus, selectedPriority, selectedAssignee, searchQuery, isAdmin]);
 
   // Load analytics on mount for admins
   useEffect(() => {
@@ -562,8 +578,20 @@ export const ContentWallPage: React.FC = () => {
                   </SelectContent>
                 </Select>
 
+                {/* Assignee Filter */}
+                <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All assignees" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Assignees</SelectItem>
+                    <SelectItem value="me">Assigned to Me</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                  </SelectContent>
+                </Select>
+
                 {/* Clear Filters Button */}
-                {(selectedDepartment || selectedRole || (selectedStatus && selectedStatus !== 'all') || (selectedPriority && selectedPriority !== 'all')) && (
+                {(selectedDepartment || selectedRole || (selectedStatus && selectedStatus !== 'all') || (selectedPriority && selectedPriority !== 'all') || (selectedAssignee && selectedAssignee !== 'all')) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -572,6 +600,7 @@ export const ContentWallPage: React.FC = () => {
                       setSelectedRole(undefined);
                       setSelectedStatus(undefined);
                       setSelectedPriority(undefined);
+                      setSelectedAssignee(undefined);
                     }}
                     className="text-sm"
                   >
@@ -778,6 +807,12 @@ export const ContentWallPage: React.FC = () => {
                                   {idea.custom_role_name}
                                 </Badge>
                               )}
+                              {idea.assigned_to_name && (
+                                <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border border-green-200 shadow-sm">
+                                  <User className="w-2.5 h-2.5 mr-1" />
+                                  Assigned to {idea.assigned_to_name}
+                                </Badge>
+                              )}
                             </div>
                             
                             {/* Meta Information */}
@@ -862,6 +897,16 @@ export const ContentWallPage: React.FC = () => {
                             )}
                             <span className="text-xs font-medium">{idea.like_count || 0}</span>
                           </Button>
+                          
+                          {/* Status Transition Button - Admin Only */}
+                          {isAdmin && (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <StatusTransitionButton
+                                idea={idea}
+                                onStatusUpdate={handleStatusUpdate}
+                              />
+                            </div>
+                          )}
                         </div>
                         
                         <Button
@@ -967,6 +1012,12 @@ export const ContentWallPage: React.FC = () => {
                                   {idea.custom_role_name}
                                 </Badge>
                               )}
+                              {idea.assigned_to_name && (
+                                <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border border-green-200 shadow-sm">
+                                  <User className="w-2.5 h-2.5 mr-1" />
+                                  Assigned to {idea.assigned_to_name}
+                                </Badge>
+                              )}
                             </div>
                             
                             {/* Meta Information */}
@@ -1051,6 +1102,16 @@ export const ContentWallPage: React.FC = () => {
                             )}
                             <span className="text-xs font-medium">{idea.like_count || 0}</span>
                           </Button>
+                          
+                          {/* Status Transition Button - Admin Only */}
+                          {isAdmin && (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <StatusTransitionButton
+                                idea={idea}
+                                onStatusUpdate={handleStatusUpdate}
+                              />
+                            </div>
+                          )}
                         </div>
                         
                         <Button

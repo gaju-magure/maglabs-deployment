@@ -324,7 +324,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
     <>
       <div className="flex h-full chat-container">
         {/* Main Chat Area */}
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex flex-col flex-1 min-w-0 h-full">
           {/* Header - Only show for existing sessions */}
           {session && (
             <>
@@ -486,7 +486,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
           )}
           
           {/* Messages Area */}
-          <div className="flex-1 overflow-hidden min-h-0">
+          <div className="flex-1 overflow-hidden">
             {isEmptyChat ? (
               // Empty chat state with template badges
               <div className="h-full flex flex-col">
@@ -502,21 +502,26 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
                     </div>
                     
                     {/* Template Cards */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                       {templateBadges.map((badge, index) => (
                         <div
                           key={index}
-                          className="chat-template-card text-left"
+                          className="chat-template-card text-left group relative"
                           onClick={() => handleBadgeClick(badge)}
+                          title={badge.prompt}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">{badge.icon}</span>
-                            <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{badge.icon}</span>
+                            <div className="min-w-0 flex-1">
                               <h3 className="font-medium text-gray-900 text-sm">{badge.name}</h3>
-                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                                {badge.prompt}
-                              </p>
+                              <div className="w-1 h-1 bg-gray-400 rounded-full mt-1"></div>
                             </div>
+                          </div>
+                          
+                          {/* Hover tooltip */}
+                          <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 shadow-lg">
+                            {badge.prompt}
+                            <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                           </div>
                         </div>
                       ))}
@@ -526,7 +531,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
               </div>
             ) : (
               // Existing chat messages
-              <ScrollArea className="flex-1">
+              <div className="h-full overflow-y-auto">
                 <div className="max-w-4xl mx-auto px-6 py-8">
                   {session.messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-center">
@@ -565,7 +570,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
                   )}
                   <div ref={messagesEndRef} />
                 </div>
-              </ScrollArea>
+              </div>
             )}
           </div>
           

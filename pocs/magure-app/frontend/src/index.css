@@ -261,7 +261,7 @@
     background: var(--chat-bg);
     border: 1px solid var(--chat-border);
     border-radius: var(--chat-radius-md);
-    padding: var(--chat-space-md);
+    padding: var(--chat-space-sm);
     transition: all 0.2s ease;
     cursor: pointer;
   }

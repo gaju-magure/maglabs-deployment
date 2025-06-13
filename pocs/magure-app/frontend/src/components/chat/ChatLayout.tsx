@@ -27,7 +27,7 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
   }, []);
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-gray-50 overflow-hidden w-full max-w-full min-w-0">
+    <div className="flex h-[calc(100vh-4rem)] bg-gray-50 w-full max-w-full min-w-0">
       
       {/* Sidebar with conditional rendering */}
       <div className={`${isSidebarOpen ? 'block' : 'hidden'} ${isMobile ? 'absolute inset-y-0 left-0 z-50' : 'relative'}`}>
@@ -43,7 +43,7 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
       )}
       
       {/* Main content */}
-      <main className="flex-1 flex flex-col overflow-hidden relative min-w-0">
+      <main className="flex-1 flex flex-col relative min-w-0">
         {/* Toggle button */}
         <Button
           size="icon"
@@ -54,7 +54,7 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({ children }) => {
           <Menu size={18} className="text-gray-700" />
         </Button>
         
-        <div className="flex-1 bg-white border-l border-gray-200 overflow-hidden min-w-0">
+        <div className="flex-1 bg-white border-l border-gray-200 min-w-0">
           {children}
         </div>
       </main>

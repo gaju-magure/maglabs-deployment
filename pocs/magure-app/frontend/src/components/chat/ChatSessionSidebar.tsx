@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Plus, MessageSquare, Archive, Search, MoreHorizontal } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -37,8 +38,20 @@ export const ChatSessionSidebar: React.FC = () => {
   const createSessionMutation = useMutation({
     mutationFn: createChatSession,
     onSuccess: (newSession) => {
+      console.log('Chat session created:', newSession);
+      
+      if (!newSession || !newSession.id) {
+        console.error('Session creation succeeded but no valid session ID returned:', newSession);
+        toast.error('Failed to create chat session - invalid response from server');
+        return;
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['chatSessions'] });
       navigate(`/dashboard/chat/${newSession.id}`);
+    },
+    onError: (error) => {
+      console.error('Failed to create chat session:', error);
+      toast.error('Failed to create chat session. Please try again.');
     },
   });
   
@@ -52,7 +65,6 @@ export const ChatSessionSidebar: React.FC = () => {
   const handleNewChat = () => {
     createSessionMutation.mutate({
       title: 'New Chat',
-      conversation_type: 'general',
     });
   };
   

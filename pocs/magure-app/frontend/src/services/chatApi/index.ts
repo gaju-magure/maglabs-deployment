@@ -5,7 +5,6 @@ import { Idea } from "../ideasApi";
 export interface ChatSession {
   id: string;
   title: string;
-  conversation_type: 'brainstorm' | 'refine' | 'general' | 'problem_solving' | 'feature_design';
   status: 'active' | 'archived' | 'deleted';
   message_count: number;
   last_message_preview: string;
@@ -69,7 +68,6 @@ export interface ChatTemplate {
   id: string;
   name: string;
   description: string;
-  conversation_type: string;
   initial_prompt: string;
   department?: string;
   created_at: string;
@@ -77,7 +75,6 @@ export interface ChatTemplate {
 
 export interface CreateSessionRequest {
   title?: string;
-  conversation_type?: string;
   template_id?: string;
   initial_message?: string;
 }
@@ -140,6 +137,26 @@ export async function listChatSessions(params?: {
   return response.json();
 }
 
+// Helper function to validate session response
+function validateSessionResponse(session: unknown): session is ChatSessionDetail {
+  if (!session || typeof session !== 'object') {
+    console.error('Invalid session response: not an object', session);
+    return false;
+  }
+  
+  if (!session.id || typeof session.id !== 'string') {
+    console.error('Invalid session response: missing or invalid id field', session);
+    return false;
+  }
+  
+  if (!session.title || typeof session.title !== 'string') {
+    console.error('Invalid session response: missing or invalid title field', session);
+    return false;
+  }
+  
+  return true;
+}
+
 export async function createChatSession(data: CreateSessionRequest): Promise<ChatSessionDetail> {
   const response = await fetch(`${getBaseUrl()}/api/v1/ideas/chat/sessions/`, {
     method: 'POST',
@@ -152,7 +169,16 @@ export async function createChatSession(data: CreateSessionRequest): Promise<Cha
     throw new Error(error.detail || 'Failed to create chat session');
   }
   
-  return response.json();
+  const session = await response.json();
+  
+  // Validate the response structure
+  if (!validateSessionResponse(session)) {
+    console.error('API returned invalid session data:', session);
+    throw new Error('Server returned invalid session data');
+  }
+  
+  console.log('Session creation API response validated successfully:', session);
+  return session;
 }
 
 export async function getChatSession(id: string): Promise<ChatSessionDetail> {

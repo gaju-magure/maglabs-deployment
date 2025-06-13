@@ -24,5 +24,11 @@ urlpatterns = router.urls + [
     # - POST /chat/sessions/{id}/regenerate_response/
     # - PATCH /chat/sessions/{id}/update_title/
     # - POST /chat/sessions/{id}/archive/
+    # - POST /chat/sessions/{id}/reset_session/
     # - POST /chat/sessions/{id}/start_interview/
+    # - POST /chat/sessions/{id}/advance_stage/
+    # 
+    # Template endpoints:
+    # - GET /chat/templates/by_category/
+    # - POST /chat/templates/{id}/create_session/
 ]

@@ -180,13 +180,6 @@ class ChatSession(models.Model):
     Each session can contain multiple messages and may result in an idea submission.
     """
     
-    CONVERSATION_TYPES = [
-        ('brainstorm', 'Brainstorming'),
-        ('refine', 'Idea Refinement'),
-        ('general', 'General Chat'),
-        ('problem_solving', 'Problem Solving'),
-        ('feature_design', 'Feature Design'),
-    ]
     
     STATUS_CHOICES = [
         ('active', 'Active'),
@@ -203,11 +196,6 @@ class ChatSession(models.Model):
         default="New Chat",
         help_text="Session title, auto-generated or user-defined"
     )
-    conversation_type = models.CharField(
-        max_length=20, 
-        choices=CONVERSATION_TYPES, 
-        default='general'
-    )
     status = models.CharField(
         max_length=20, 
         choices=STATUS_CHOICES, 
@@ -221,27 +209,67 @@ class ChatSession(models.Model):
         related_name='chat_sessions'
     )
     
-    # AI Configuration
-    system_prompt = models.TextField(
+    # MagLabs Integration Fields
+    maglabs_session_id = models.CharField(
+        max_length=100,
         blank=True,
-        help_text="Custom system prompt for this session"
+        help_text="MagLabs API session ID for conversation tracking"
     )
-    ai_model = models.CharField(
+    current_stage = models.CharField(
         max_length=50,
-        default='gpt-4o-mini',
-        help_text="AI model used for this session"
+        default='user_profiling',
+        help_text="Current conversation stage in MagLabs interview flow"
+    )
+    stage_progress = models.FloatField(
+        default=0.0,
+        help_text="Progress through current stage (0.0 to 1.0)"
+    )
+    conversation_health = models.CharField(
+        max_length=20,
+        default='good',
+        help_text="Conversation health status from MagLabs"
+    )
+    business_context = models.JSONField(
+        default=dict,
+        help_text="Business context data from MagLabs API"
+    )
+    
+    # Interview Mode Configuration
+    interview_mode = models.BooleanField(
+        default=False,
+        help_text="Whether this session is in structured interview mode"
+    )
+    interview_type = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Type of interview flow (business_idea, problem_analysis, etc.)"
+    )
+    target_stages = models.JSONField(
+        default=list,
+        help_text="Stages this session aims to complete"
+    )
+    completed_stages = models.JSONField(
+        default=list,
+        help_text="Stages that have been completed"
+    )
+    interview_goals = models.TextField(
+        blank=True,
+        help_text="Specific objectives for this interview session"
+    )
+    
+    # Template relationship
+    template = models.ForeignKey(
+        'ChatTemplate',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Template used to create this session"
     )
     
     # Context from user profile
     context_metadata = models.JSONField(
         default=dict,
-        help_text="Stores department, role, and other context"
-    )
-    
-    # AI session tracking for MagLabs API features
-    ai_metadata = models.JSONField(
-        default=dict,
-        help_text="Stores interview session ID, stage, and other AI service metadata"
+        help_text="Stores department, role, and other user context"
     )
     
     # Idea submission tracking
@@ -372,26 +400,47 @@ class ChatMessage(models.Model):
 
 class ChatTemplate(models.Model):
     """
-    Predefined templates for starting conversations.
-    Helps users begin productive chat sessions.
+    Enhanced templates for starting conversations with MagLabs integration.
+    Templates configure conversation behavior and expected interview stages.
     """
     
     name = models.CharField(max_length=100)
     description = models.TextField()
-    conversation_type = models.CharField(
-        max_length=20,
-        choices=ChatSession.CONVERSATION_TYPES
-    )
     initial_prompt = models.TextField(
         help_text="The first message to start the conversation"
     )
-    system_prompt_override = models.TextField(
-        blank=True,
-        help_text="Custom system prompt for this template"
-    )
-    is_active = models.BooleanField(default=True)
     
-    # Templates can be global or department-specific
+    # MagLabs Integration Fields
+    maglabs_interview_type = models.CharField(
+        max_length=50,
+        default='business_idea',
+        help_text="Type of interview flow in MagLabs API"
+    )
+    expected_stages = models.JSONField(
+        default=list,
+        help_text="List of stages this template expects to complete"
+    )
+    stage_prompts = models.JSONField(
+        default=dict,
+        help_text="Custom prompts or instructions for specific stages"
+    )
+    conversation_goals = models.TextField(
+        blank=True,
+        help_text="What this template aims to achieve"
+    )
+    
+    # Template Configuration
+    temperature = models.FloatField(
+        default=0.7,
+        help_text="AI creativity level (0.0-2.0)"
+    )
+    focus_stages = models.JSONField(
+        default=list,
+        help_text="Stages to emphasize in this conversation type"
+    )
+    
+    # Administrative fields
+    is_active = models.BooleanField(default=True)
     department = models.ForeignKey(
         'tenants.TenantDepartment',
         on_delete=models.SET_NULL,
@@ -399,11 +448,36 @@ class ChatTemplate(models.Model):
         blank=True,
         help_text="Department-specific template"
     )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="User who created this template"
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['department', 'is_active']),
+        ]
     
     def __str__(self):
-        return f"{self.name} ({self.conversation_type})"
+        return self.name
+    
+    def get_maglabs_config(self):
+        """Get MagLabs configuration for this template"""
+        return {
+            'interview_type': self.maglabs_interview_type,
+            'expected_stages': self.expected_stages,
+            'stage_prompts': self.stage_prompts,
+            'temperature': self.temperature,
+            'focus_stages': self.focus_stages,
+            'conversation_goals': self.conversation_goals
+        }
+
+

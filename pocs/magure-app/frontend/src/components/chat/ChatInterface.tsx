@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Send, RefreshCw, Lightbulb, MoreVertical, Sparkles } from 'lucide-react';
+import { Send, RefreshCw, Lightbulb, MoreVertical, Sparkles, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ChatMessage } from './ChatMessage';
 import { SubmitIdeaDialog } from './SubmitIdeaDialog';
+import { ChatHelpModal } from './ChatHelpModal';
 import { toast } from '@/hooks/use-toast';
 import {
   sendMessage,
@@ -30,6 +31,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ session }) => {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
@@ -41,10 +43,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ session }) => {
       setMessage('');
       scrollToBottom();
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      let errorMessage = "Failed to send message. Please try again.";
+      
+      // Enhanced error handling with specific messages
+      if (error?.response?.status === 503) {
+        errorMessage = "AI service is temporarily unavailable. Please check your connection and try again.";
+      } else if (error?.response?.status === 502) {
+        errorMessage = "Received invalid response from AI service. Please try rephrasing your message.";
+      } else if (error?.response?.status >= 500) {
+        errorMessage = "Server error occurred. Our team has been notified. Please try again.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to send message. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -82,10 +97,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ session }) => {
         description: "AI interview mode activated for comprehensive idea development.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      let errorMessage = "Failed to start interview mode.";
+      
+      // Enhanced error handling for interview mode
+      if (error?.response?.status === 503) {
+        errorMessage = "AI service is unavailable. Please ensure the MagLabs VLLM API is running and try again.";
+      } else if (error?.response?.status === 502) {
+        errorMessage = "AI service returned an invalid response. Please try again.";
+      } else if (error?.response?.status >= 500) {
+        errorMessage = "Server error occurred while starting interview. Please try again later.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to start interview mode.",
+        title: "Interview Mode Error",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -145,11 +173,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ session }) => {
               )}
             </div>
             <p className="text-sm text-gray-500">
-              {session.conversation_type.replace('_', ' ')} • {session.message_count} messages
+              {session.message_count} messages
               {session.total_tokens_used > 0 && ` • ${session.total_tokens_used} tokens`}
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowHelpModal(true)}
+              className="gap-2 text-gray-600 hover:text-gray-900"
+            >
+              <HelpCircle size={16} />
+              Help
+            </Button>
             {session.can_submit_idea && !session.is_idea_submitted && (
               <Button
                 variant="outline"
@@ -180,6 +217,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ session }) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setShowHelpModal(true)}>
+                  <HelpCircle size={16} className="mr-2" />
+                  Help & Guide
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleEditTitle}>
                   Edit Title
                 </DropdownMenuItem>
@@ -206,9 +247,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ session }) => {
               <div className="text-center py-12">
                 <MessageSquare className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Start a conversation</h3>
-                <p className="text-gray-500 mb-4">
+                <p className="text-gray-500 mb-2">
                   Ask me anything about your ideas, and I'll help you refine and develop them.
                 </p>
+                <button
+                  onClick={() => setShowHelpModal(true)}
+                  className="text-blue-600 hover:text-blue-800 text-sm underline mb-4"
+                >
+                  Need help getting started? Click here for tips and examples
+                </button>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-md mx-auto">
                   <Button
                     variant="outline"
@@ -284,9 +331,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ session }) => {
                 <Send size={16} />
               </Button>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Press Enter to send, Shift+Enter for new line
-            </p>
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-xs text-gray-500">
+                Press Enter to send, Shift+Enter for new line
+              </p>
+              <button
+                onClick={() => setShowHelpModal(true)}
+                className="text-xs text-blue-600 hover:text-blue-800 underline"
+              >
+                Need help?
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -307,6 +362,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ session }) => {
           }}
         />
       )}
+      
+      {/* Help Modal */}
+      <ChatHelpModal 
+        isOpen={showHelpModal} 
+        onClose={() => setShowHelpModal(false)} 
+      />
     </>
   );
 };

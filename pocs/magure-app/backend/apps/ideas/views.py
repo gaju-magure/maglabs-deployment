@@ -19,8 +19,12 @@ from .serializers import (
     SendMessageSerializer,
     SubmitIdeaFromChatSerializer,
     ChatTemplateSerializer,
+    ChatTemplateListSerializer,
 )
-from services.ai_services.openai_service import OpenAIService
+from services.ai_services.maglabs_service import MagLabsService
+import logging
+
+logger = logging.getLogger(__name__)
 
 class IdeaViewSet(viewsets.ModelViewSet):
     queryset = Idea.objects.all()
@@ -300,12 +304,18 @@ class IdeaRefineAPIView(APIView):
 
     def post(self, request):
         idea_text = request.data.get("idea_text")
-        conversation_history = request.data.get("conversation_history", None)
         if not idea_text:
             return Response({"error": "idea_text is required"}, status=status.HTTP_400_BAD_REQUEST)
-        service = OpenAIService()
-        refined = service.refine_idea(idea_text, conversation_history)
-        return Response({"refined_idea": refined})
+        
+        # Use MagLabs service for idea refinement
+        try:
+            service = MagLabsService()
+            messages = [{"role": "user", "content": f"Please help me refine this idea: {idea_text}"}]
+            result = service.send_message(messages)
+            return Response({"refined_idea": result['content']})
+        except Exception as e:
+            logger.error(f"Error refining idea: {e}")
+            return Response({"error": "Failed to refine idea"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class IdeaSubmitAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -349,8 +359,6 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         """Filter sessions by current user and active status"""
         queryset = ChatSession.objects.filter(
             user=self.request.user
-        ).annotate(
-            message_count=Count('messages')
         )
         
         # Filter by status
@@ -380,6 +388,23 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         elif self.action in ['retrieve', 'update', 'partial_update']:
             return ChatSessionDetailSerializer
         return ChatSessionDetailSerializer
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new chat session and return full session data including ID.
+        """
+        # Use create serializer for input validation
+        serializer = ChatSessionCreateSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        
+        # Create the session
+        session = serializer.save()
+        
+        # Use detail serializer for response to include all fields including ID
+        response_serializer = ChatSessionDetailSerializer(session, context={'request': request})
+        
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
     @action(detail=True, methods=['post'])
     def send_message(self, request, pk=None):
@@ -413,7 +438,7 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         
         # Get AI response
         try:
-            ai_service = OpenAIService()
+            ai_service = MagLabsService()
             
             # Build conversation history
             conversation_history = self._build_conversation_history(session)
@@ -424,12 +449,22 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
                 'content': user_message.content
             })
             
-            # Get AI response using the enhanced chat_completion method
-            ai_response_data = ai_service.chat_completion(
+            # Get AI response using MagLabs service with template configuration
+            ai_response_data = ai_service.send_message(
                 messages=conversation_history,
-                session_context=session.context_metadata,
-                session_id=session.ai_metadata.get('interview_session_id') if session.ai_metadata else None
+                user_context=session.context_metadata,
+                session_id=session.maglabs_session_id,
+                conversation_config=ai_service._get_conversation_config(
+                    session.template
+                )
             )
+            
+            # Validate AI response
+            if not ai_response_data or 'content' not in ai_response_data:
+                raise ValueError("Invalid response from AI service - missing content")
+            
+            if not ai_response_data['content'].strip():
+                raise ValueError("AI service returned empty response")
             
             # Create AI message
             ai_message = ChatMessage.objects.create(
@@ -438,24 +473,28 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
                 content=ai_response_data['content'],
                 message_type='text',
                 sequence_number=last_sequence + 2,
-                ai_metadata=ai_response_data['metadata'],
+                ai_metadata=ai_response_data.get('metadata', {}),
                 is_processed=True
             )
             
-            # Update session with AI metadata (interview session tracking)
-            if ai_response_data.get('interview_session_id'):
-                session.ai_metadata = {
-                    'interview_session_id': ai_response_data['interview_session_id'],
-                    'interview_stage': ai_response_data['metadata'].get('interview_stage'),
-                    'last_updated': timezone.now().isoformat()
-                }
+            # Update session with MagLabs metadata
+            if ai_response_data.get('session_id'):
+                session.maglabs_session_id = ai_response_data['session_id']
+            
+            session.current_stage = ai_response_data.get('stage', session.current_stage)
+            session.stage_progress = ai_response_data.get('stage_progress', session.stage_progress)
+            session.conversation_health = ai_response_data.get('conversation_health', session.conversation_health)
+            session.business_context = ai_response_data.get('business_context', session.business_context)
             
             # Update token usage if available
-            if 'usage' in ai_response_data['metadata']:
-                session.total_tokens_used += ai_response_data['metadata']['usage'].get('total_tokens', 0)
+            metadata = ai_response_data.get('metadata', {})
+            if 'usage' in metadata:
+                session.total_tokens_used += metadata['usage'].get('total_tokens', 0)
             
             session.message_count += 1
             session.save()
+            
+            logger.info(f"Successfully processed message for session {session.id}")
             
             # Return both messages
             return Response({
@@ -464,12 +503,74 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
                 'session_updated': ChatSessionDetailSerializer(session, context={'request': request}).data
             })
             
-        except Exception as e:
-            # Create error message
+        except ConnectionError as e:
+            logger.error(f"Connection error to AI service for session {session.id}: {str(e)}")
+            
+            # Check if this is a token limit or session reset scenario
+            error_str = str(e).lower()
+            if 'token limit' in error_str or 'session' in error_str:
+                try:
+                    # Attempt session reset by creating new unique context
+                    import uuid
+                    from django.utils import timezone
+                    
+                    # Update session context to force new MagLabs session
+                    session.context_metadata['session_reset'] = str(uuid.uuid4())
+                    session.context_metadata['reset_timestamp'] = timezone.now().isoformat()
+                    session.context_metadata['reset_reason'] = 'token_limit_exceeded'
+                    session.maglabs_session_id = ''  # Clear old session ID
+                    session.save()
+                    
+                    # Retry the AI request with new context
+                    ai_response_data = ai_service.send_message(
+                        messages=conversation_history,
+                        user_context=session.context_metadata,
+                        session_id=None,  # Force new session
+                        conversation_config=ai_service._get_conversation_config(
+                            session.template
+                        )
+                    )
+                    
+                    # Create successful AI message
+                    ai_message = ChatMessage.objects.create(
+                        session=session,
+                        role='assistant',
+                        content=ai_response_data['content'],
+                        message_type='text',
+                        sequence_number=last_sequence + 2,
+                        ai_metadata=ai_response_data.get('metadata', {}),
+                        is_processed=True
+                    )
+                    
+                    # Update session with new MagLabs data
+                    if ai_response_data.get('session_id'):
+                        session.maglabs_session_id = ai_response_data['session_id']
+                    session.current_stage = ai_response_data.get('stage', session.current_stage)
+                    session.stage_progress = ai_response_data.get('stage_progress', session.stage_progress)
+                    session.conversation_health = ai_response_data.get('conversation_health', session.conversation_health)
+                    session.business_context = ai_response_data.get('business_context', session.business_context)
+                    session.message_count += 1
+                    session.save()
+                    
+                    logger.info(f"Successfully reset session {session.id} and got AI response")
+                    
+                    # Return success with session reset notification
+                    return Response({
+                        'user_message': ChatMessageSerializer(user_message).data,
+                        'ai_message': ChatMessageSerializer(ai_message).data,
+                        'session_updated': ChatSessionDetailSerializer(session, context={'request': request}).data,
+                        'session_reset': True,
+                        'reset_message': 'Session was automatically refreshed to continue the conversation.'
+                    })
+                    
+                except Exception as retry_error:
+                    logger.error(f"Session reset failed for session {session.id}: {str(retry_error)}")
+                    # Fall through to original error handling
+            
             error_message = ChatMessage.objects.create(
                 session=session,
                 role='system',
-                content=f"Sorry, I encountered an error: {str(e)}",
+                content="I'm having trouble connecting to the AI service. The session may need to be refreshed. Please try again or create a new conversation.",
                 message_type='error',
                 sequence_number=last_sequence + 2,
                 is_processed=True,
@@ -480,7 +581,46 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             return Response({
                 'user_message': ChatMessageSerializer(user_message).data,
                 'error_message': ChatMessageSerializer(error_message).data,
-                'error': str(e)
+                'error': 'Connection to AI service failed. Please try again or create a new conversation.',
+                'suggest_new_session': True
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            
+        except ValueError as e:
+            logger.error(f"Invalid AI response for session {session.id}: {str(e)}")
+            error_message = ChatMessage.objects.create(
+                session=session,
+                role='system',
+                content="I received an invalid response from the AI service. Please try rephrasing your message.",
+                message_type='error',
+                sequence_number=last_sequence + 2,
+                is_processed=True,
+                processing_status='failed',
+                error_message=str(e)
+            )
+            
+            return Response({
+                'user_message': ChatMessageSerializer(user_message).data,
+                'error_message': ChatMessageSerializer(error_message).data,
+                'error': 'Invalid AI response. Please try again with a different message.'
+            }, status=status.HTTP_502_BAD_GATEWAY)
+            
+        except Exception as e:
+            logger.error(f"Unexpected error in send_message for session {session.id}: {str(e)}")
+            error_message = ChatMessage.objects.create(
+                session=session,
+                role='system',
+                content="Sorry, I encountered an unexpected error. Our team has been notified. Please try again.",
+                message_type='error',
+                sequence_number=last_sequence + 2,
+                is_processed=True,
+                processing_status='failed',
+                error_message=str(e)
+            )
+            
+            return Response({
+                'user_message': ChatMessageSerializer(user_message).data,
+                'error_message': ChatMessageSerializer(error_message).data,
+                'error': 'An unexpected error occurred. Please try again.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
@@ -579,84 +719,333 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         return Response({'status': 'archived'})
     
     @action(detail=True, methods=['post'])
-    def start_interview(self, request, pk=None):
+    def reset_session(self, request, pk=None):
         """
-        Start an AI interview session for comprehensive idea development.
-        This leverages the MagLabs API's multi-agent interview system.
+        Manually reset the MagLabs session for this chat.
+        Useful when token limits are hit or session becomes unresponsive.
         """
         session = self.get_object()
-        initial_message = request.data.get('message', 'I have a business idea I want to develop')
         
         try:
-            ai_service = OpenAIService()
-            result = ai_service.trigger_interview_mode(
-                initial_message=initial_message,
-                user_context=session.context_metadata
-            )
+            import uuid
+            from django.utils import timezone
             
-            # Create the initial message
+            # Update context metadata to force new MagLabs session
+            session.context_metadata['manual_reset'] = str(uuid.uuid4())
+            session.context_metadata['reset_timestamp'] = timezone.now().isoformat()
+            session.context_metadata['reset_by'] = request.user.username
+            session.context_metadata['reset_reason'] = 'manual_user_request'
+            
+            # Clear old MagLabs session data
+            old_session_id = session.maglabs_session_id
+            session.maglabs_session_id = ''
+            session.current_stage = 'user_profiling'
+            session.stage_progress = 0.0
+            session.conversation_health = 'good'
+            session.business_context = {}
+            
+            # Reset interview mode if active
+            if session.interview_mode:
+                session.interview_mode = False
+                session.interview_goals = ''
+                session.target_stages = []
+                session.completed_stages = []
+            
+            session.save()
+            
+            # Create system message about the reset
             last_sequence = session.messages.aggregate(
                 max_seq=Max('sequence_number')
             )['max_seq'] or 0
             
-            user_message = ChatMessage.objects.create(
+            ChatMessage.objects.create(
                 session=session,
-                role='user',
-                content=initial_message,
-                message_type='text',
-                sequence_number=last_sequence + 1
+                role='system',
+                content="🔄 Session has been reset. Your conversation history is preserved, but the AI context has been refreshed. You can continue chatting normally.",
+                message_type='system',
+                sequence_number=last_sequence + 1,
+                ai_metadata={'reset_event': True, 'old_session_id': old_session_id}
             )
             
-            # Create AI response
+            session.message_count += 1
+            session.update_activity()
+            
+            logger.info(f"Session {session.id} manually reset by user {request.user.username}")
+            
+            return Response({
+                'message': 'Session reset successfully',
+                'session_updated': ChatSessionDetailSerializer(session, context={'request': request}).data,
+                'reset_info': {
+                    'old_session_id': old_session_id,
+                    'reset_timestamp': timezone.now().isoformat(),
+                    'conversation_preserved': True
+                }
+            })
+            
+        except Exception as e:
+            logger.error(f"Error resetting session {session.id}: {str(e)}")
+            return Response({
+                'error': 'Failed to reset session. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['post'])
+    def start_interview(self, request, pk=None):
+        """
+        Activate structured interview mode for this session.
+        Utilizes MagLabs multi-agent interview system with conversation type awareness.
+        """
+        session = self.get_object()
+        interview_goals = request.data.get('interview_goals', '')
+        
+        # Check if interview mode is already active
+        if session.interview_mode:
+            return Response({
+                'error': 'Interview mode is already active for this session',
+                'current_stage': session.current_stage,
+                'progress': session.stage_progress
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            ai_service = MagLabsService()
+            
+            # Ensure session has fresh context for interview mode
+            if not session.maglabs_session_id:
+                import uuid
+                from django.utils import timezone
+                session.context_metadata['interview_init'] = str(uuid.uuid4())
+                session.context_metadata['interview_timestamp'] = timezone.now().isoformat()
+                session.save()
+            
+            # Activate interview mode using MagLabs service
+            result = ai_service.start_interview_mode(
+                session_id=session.maglabs_session_id,
+                template=session.template,
+                interview_goals=interview_goals
+            )
+            
+            # Validate response
+            if not result or 'content' not in result:
+                raise ValueError("Invalid response from MagLabs service")
+            
+            # Update session with interview configuration
+            session.interview_mode = True
+            session.interview_type = result.get('interview_type', 'business_idea')
+            session.interview_goals = interview_goals
+            
+            # Get configuration for target stages
+            config = ai_service._get_conversation_config(session.template)
+            session.target_stages = config.get('expected_completion', [])
+            
+            # Update MagLabs tracking
+            if result.get('session_id'):
+                session.maglabs_session_id = result['session_id']
+            session.current_stage = result.get('stage', session.current_stage)
+            session.stage_progress = result.get('stage_progress', session.stage_progress)
+            session.conversation_health = result.get('conversation_health', session.conversation_health)
+            
+            session.save()
+            
+            # Create interview activation message
+            last_sequence = session.messages.aggregate(
+                max_seq=Max('sequence_number')
+            )['max_seq'] or 0
+            
             ai_message = ChatMessage.objects.create(
                 session=session,
                 role='assistant',
                 content=result['content'],
                 message_type='text',
-                sequence_number=last_sequence + 2,
-                ai_metadata=result['metadata']
+                sequence_number=last_sequence + 1,
+                ai_metadata=result.get('metadata', {})
             )
             
-            # Update session metadata
-            if result.get('interview_session_id'):
-                session.ai_metadata = {
-                    'interview_session_id': result['interview_session_id'],
-                    'interview_stage': result['metadata'].get('interview_stage'),
-                    'interview_mode': True,
-                    'started_at': timezone.now().isoformat()
-                }
-                session.conversation_type = 'refine'  # Switch to refinement mode
+            session.message_count += 1
+            session.update_activity()
             
-            session.message_count += 2
-            session.save()
+            logger.info(f"Interview mode activated for session {session.id}")
             
             return Response({
-                'user_message': ChatMessageSerializer(user_message).data,
+                'message': 'Interview mode activated successfully',
                 'ai_message': ChatMessageSerializer(ai_message).data,
-                'session': ChatSessionDetailSerializer(session, context={'request': request}).data,
-                'interview_started': bool(result.get('interview_session_id'))
+                'session_updated': ChatSessionDetailSerializer(session, context={'request': request}).data,
+                'interview_config': {
+                    'target_stages': session.target_stages,
+                    'current_stage': session.current_stage,
+                    'progress': session.stage_progress,
+                    'health': session.conversation_health
+                }
+            })
+            
+        except ConnectionError as e:
+            logger.error(f"Connection error activating interview mode for session {session.id}: {str(e)}")
+            
+            # Check if this is a session-related error and attempt reset
+            error_str = str(e).lower()
+            if 'token limit' in error_str or 'session' in error_str or 'unprocessable' in error_str:
+                try:
+                    import uuid
+                    from django.utils import timezone
+                    
+                    # Reset session context for interview mode
+                    session.context_metadata['interview_reset'] = str(uuid.uuid4())
+                    session.context_metadata['interview_retry_timestamp'] = timezone.now().isoformat()
+                    session.context_metadata['retry_reason'] = 'interview_activation_failed'
+                    session.maglabs_session_id = ''  # Clear problematic session
+                    session.save()
+                    
+                    # Retry interview activation with fresh context
+                    result = ai_service.start_interview_mode(
+                        session_id=None,  # Force new session
+                        template=session.template,
+                        interview_goals=interview_goals
+                    )
+                    
+                    if result and 'content' in result:
+                        # Update session with interview configuration
+                        session.interview_mode = True
+                        session.interview_type = result.get('interview_type', 'business_idea')
+                        session.interview_goals = interview_goals
+                        
+                        # Get configuration for target stages
+                        config = ai_service._get_conversation_config(session.template)
+                        session.target_stages = config.get('expected_completion', [])
+                        
+                        # Update MagLabs tracking
+                        if result.get('session_id'):
+                            session.maglabs_session_id = result['session_id']
+                        session.current_stage = result.get('stage', session.current_stage)
+                        session.stage_progress = result.get('stage_progress', session.stage_progress)
+                        session.conversation_health = result.get('conversation_health', session.conversation_health)
+                        session.save()
+                        
+                        # Create interview activation message
+                        last_sequence = session.messages.aggregate(
+                            max_seq=Max('sequence_number')
+                        )['max_seq'] or 0
+                        
+                        ai_message = ChatMessage.objects.create(
+                            session=session,
+                            role='assistant',
+                            content=result['content'],
+                            message_type='text',
+                            sequence_number=last_sequence + 1,
+                            ai_metadata=result.get('metadata', {})
+                        )
+                        
+                        session.message_count += 1
+                        session.update_activity()
+                        
+                        logger.info(f"Interview mode activated after session reset for session {session.id}")
+                        
+                        return Response({
+                            'message': 'Interview mode activated successfully (session was refreshed)',
+                            'ai_message': ChatMessageSerializer(ai_message).data,
+                            'session_updated': ChatSessionDetailSerializer(session, context={'request': request}).data,
+                            'interview_config': {
+                                'target_stages': session.target_stages,
+                                'current_stage': session.current_stage,
+                                'progress': session.stage_progress,
+                                'health': session.conversation_health
+                            },
+                            'session_reset': True
+                        })
+                        
+                except Exception as retry_error:
+                    logger.error(f"Interview mode retry failed for session {session.id}: {str(retry_error)}")
+            
+            return Response({
+                'error': 'Failed to activate interview mode due to connection issues. Please try creating a new conversation.',
+                'suggest_new_session': True
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            
+        except ValueError as e:
+            logger.error(f"Invalid response activating interview mode for session {session.id}: {str(e)}")
+            return Response({
+                'error': 'Received invalid response from AI service. Please try again.'
+            }, status=status.HTTP_502_BAD_GATEWAY)
+            
+        except Exception as e:
+            logger.error(f"Unexpected error activating interview mode for session {session.id}: {str(e)}")
+            return Response({
+                'error': 'Failed to activate interview mode. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['post'])
+    def advance_stage(self, request, pk=None):
+        """
+        Manually advance to the next interview stage when user is ready.
+        """
+        session = self.get_object()
+        target_stage = request.data.get('target_stage')
+        
+        if not session.interview_mode:
+            return Response({
+                'error': 'Session is not in interview mode'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not target_stage:
+            return Response({
+                'error': 'target_stage is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            ai_service = MagLabsService()
+            
+            # Request stage advancement
+            result = ai_service.advance_to_stage(
+                session_id=session.maglabs_session_id,
+                target_stage=target_stage,
+                template=session.template
+            )
+            
+            # Update session stage tracking
+            session.current_stage = result.get('stage', target_stage)
+            session.stage_progress = result.get('stage_progress', 0.0)
+            session.conversation_health = result.get('conversation_health', session.conversation_health)
+            
+            # Mark previous stage as completed
+            if target_stage not in session.completed_stages:
+                session.completed_stages = session.completed_stages + [session.current_stage]
+            
+            session.save()
+            
+            # Create stage advancement message
+            last_sequence = session.messages.aggregate(
+                max_seq=Max('sequence_number')
+            )['max_seq'] or 0
+            
+            ai_message = ChatMessage.objects.create(
+                session=session,
+                role='assistant',
+                content=result['content'],
+                message_type='text',
+                sequence_number=last_sequence + 1,
+                ai_metadata=result.get('metadata', {})
+            )
+            
+            session.message_count += 1
+            session.update_activity()
+            
+            return Response({
+                'message': f'Advanced to {target_stage} stage',
+                'ai_message': ChatMessageSerializer(ai_message).data,
+                'session_updated': ChatSessionDetailSerializer(session, context={'request': request}).data
             })
             
         except Exception as e:
-            return Response(
-                {'error': f'Failed to start interview: {str(e)}'}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Error advancing stage for session {session.id}: {str(e)}")
+            return Response({
+                'error': 'Failed to advance stage. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     
     def _build_conversation_history(self, session):
         """
-        Build conversation history in format expected by AI service.
+        Build conversation history in format expected by MagLabs AI service.
         """
         messages = []
         
-        # Add system prompt if exists
-        if session.system_prompt:
-            messages.append({
-                'role': 'system',
-                'content': session.system_prompt
-            })
-        
-        # Add all messages in order
+        # Add all messages in order (MagLabs handles system prompts internally)
         for message in session.messages.filter(
             role__in=['user', 'assistant']
         ).order_by('sequence_number'):
@@ -668,20 +1057,88 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         return messages
 
 
-class ChatTemplateViewSet(viewsets.ReadOnlyModelViewSet):
+class ChatTemplateViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for chat templates.
-    Read-only access to predefined conversation starters.
+    ViewSet for managing chat templates with MagLabs integration.
+    Templates configure conversation behavior and interview stages.
     """
     
-    serializer_class = ChatTemplateSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
         """Filter templates by department and active status"""
         user = self.request.user
-        return ChatTemplate.objects.filter(
-            Q(department=None) | Q(department=user.department),
-            is_active=True
+        queryset = ChatTemplate.objects.filter(is_active=True)
+        
+        # Filter by department - show global templates and user's department templates
+        if user.department:
+            queryset = queryset.filter(
+                Q(department=None) | Q(department=user.department)
+            )
+        else:
+            queryset = queryset.filter(department=None)
+        
+        return queryset.order_by('name')
+    
+    def get_serializer_class(self):
+        """Use different serializers for different actions"""
+        if self.action == 'list':
+            return ChatTemplateListSerializer
+        return ChatTemplateSerializer
+    
+    def perform_create(self, serializer):
+        """Set the created_by user when creating templates"""
+        serializer.save(created_by=self.request.user)
+    
+    @action(detail=False, methods=['get'])
+    def by_category(self, request):
+        """Get all available templates"""
+        queryset = self.get_queryset()
+        templates = ChatTemplateListSerializer(queryset, many=True).data
+        return Response({'templates': templates})
+    
+    @action(detail=True, methods=['post'])
+    def create_session(self, request, pk=None):
+        """Create a new chat session using this template"""
+        template = self.get_object()
+        
+        # Extract any custom parameters
+        custom_message = request.data.get('initial_message')
+        interview_mode = request.data.get('interview_mode', False)
+        custom_goals = request.data.get('interview_goals', '')
+        
+        # Create session data
+        session_data = {
+            'title': request.data.get('title', f"New {template.name} Chat"),
+            'template_id': template.id,
+            'interview_mode': interview_mode,
+            'interview_goals': custom_goals or template.conversation_goals
+        }
+        
+        if custom_message:
+            session_data['initial_message'] = custom_message
+        
+        # Use the ChatSessionCreateSerializer to create the session
+        serializer = ChatSessionCreateSerializer(
+            data=session_data,
+            context={'request': request}
         )
+        
+        if serializer.is_valid():
+            session = serializer.save()
+            
+            # Return full session details
+            response_serializer = ChatSessionDetailSerializer(
+                session, 
+                context={'request': request}
+            )
+            
+            return Response({
+                'message': f'Session created from template: {template.name}',
+                'session': response_serializer.data,
+                'template_config': template.get_maglabs_config()
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 

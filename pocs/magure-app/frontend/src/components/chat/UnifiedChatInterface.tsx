@@ -328,11 +328,11 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
           {/* Header - Only show for existing sessions */}
           {session && (
             <>
-              <div className="bg-white border-b border-gray-200 px-6 py-4">
-                <div className="flex items-center justify-between max-w-4xl mx-auto pl-10">
-                  <div className="flex-1">
+              <div className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
+                <div className="flex items-center justify-between max-w-4xl mx-auto pl-12">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-lg font-semibold">{session.title}</h2>
+                      <h2 className="text-lg font-semibold truncate">{session.title}</h2>
                       {isInInterviewMode && (
                         <div className="bg-purple-100 border border-purple-200 px-3 py-1 rounded-full">
                           <span className="text-purple-800 text-xs font-medium flex items-center gap-1">
@@ -357,7 +357,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
                       )}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-shrink-0">
                     {/* Simplified progress indicator */}
                     <button 
                       className="flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
@@ -440,7 +440,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
               
               {/* Token Usage Warning */}
               {isTokenUsageWarning && (
-                <div className={`border-b px-6 py-3 ${
+                <div className={`border-b px-6 py-3 flex-shrink-0 ${
                   isTokenUsageHigh 
                     ? 'bg-red-50 border-red-200' 
                     : 'bg-amber-50 border-amber-200'
@@ -486,7 +486,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
           )}
           
           {/* Messages Area */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden min-h-0">
             {isEmptyChat ? (
               // Empty chat state with template badges
               <div className="h-full flex flex-col">
@@ -570,7 +570,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
           </div>
           
           {/* Input Area */}
-          <div className="border-t border-gray-200 bg-white px-6 py-4">
+          <div className="border-t border-gray-200 bg-white px-6 py-4 flex-shrink-0">
             <div className="max-w-4xl mx-auto">
               <div className="relative bg-white border border-gray-300 rounded-xl p-4 shadow-sm hover:shadow-md focus-within:border-green-400 focus-within:shadow-sm transition-all">
                 <Textarea

@@ -13,7 +13,6 @@ import { useUserManagement } from '@/hooks/useUserManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/enums/userRole';
 import { Trash2, Building, Shield, Palette } from 'lucide-react';
-import { BrandingPanel } from '@/components/branding/BrandingPanel';
 
 export const OrganizationPage: React.FC = () => {
   const { user: currentUser } = useAuth();
@@ -206,7 +205,32 @@ export const OrganizationPage: React.FC = () => {
 
             {/* Branding Tab */}
             <TabsContent value="branding" className="space-y-4">
-              <BrandingPanel />
+              <div className="text-center py-8">
+                <Palette className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-xl font-semibold mb-2" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  Custom Branding
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Customize your organization's branding, themes, and visual identity
+                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-lg mx-auto">
+                  <p className="text-blue-800 text-sm mb-3">
+                    🚧 <strong>Coming Soon!</strong>
+                  </p>
+                  <p className="text-blue-700 text-sm">
+                    We're building a comprehensive branding system that will allow you to:
+                  </p>
+                  <ul className="text-blue-700 text-sm mt-2 space-y-1 text-left">
+                    <li>• Choose from professional theme templates</li>
+                    <li>• Customize colors and typography</li>
+                    <li>• Upload and manage logos and brand assets</li>
+                    <li>• Apply consistent branding across your workspace</li>
+                  </ul>
+                  <p className="text-blue-600 text-xs mt-3 italic">
+                    This feature will be available in a future update.
+                  </p>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

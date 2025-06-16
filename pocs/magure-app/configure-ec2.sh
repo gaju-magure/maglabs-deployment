@@ -46,11 +46,40 @@ echo -e "${BLUE}📋 Configuration Setup${NC}"
 # Auto-detect EC2 public IP
 echo -e "${BLUE}🌐 Detecting EC2 public IP...${NC}"
 EC2_IP=""
-if curl -s --connect-timeout 5 http://169.254.169.254/latest/meta-data/public-ipv4 > /dev/null 2>&1; then
-    EC2_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+
+# Simple EC2 IP detection
+echo "Attempting to get EC2 public IP..."
+
+# Test if metadata service is accessible first
+if curl -s --connect-timeout 3 http://169.254.169.254/ >/dev/null 2>&1; then
+    echo "✅ Metadata service is accessible"
+    EC2_IP=$(curl -s --connect-timeout 5 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null)
+    echo "Debug: Raw response: '${EC2_IP}'"
+    echo "Debug: Response length: ${#EC2_IP}"
+    
+    # Clean up any whitespace/newlines
+    EC2_IP=$(echo "$EC2_IP" | tr -d '\n\r' | xargs 2>/dev/null)
+    echo "Debug: Cleaned response: '${EC2_IP}'"
+else
+    echo "❌ Cannot access EC2 metadata service"
+    EC2_IP=""
+fi
+
+# Validate IP format
+if [ -n "$EC2_IP" ] && [[ $EC2_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo -e "${GREEN}✅ Detected EC2 IP: ${EC2_IP}${NC}"
 else
-    echo -e "${YELLOW}⚠️ Could not auto-detect EC2 IP (not running on EC2?)${NC}"
+    if [ -n "$EC2_IP" ]; then
+        echo -e "${YELLOW}⚠️ Got response but not valid IP: '${EC2_IP}'${NC}"
+    else
+        echo -e "${YELLOW}⚠️ Could not auto-detect EC2 IP${NC}"
+    fi
+    echo "This might happen if:"
+    echo "- Not running on EC2"
+    echo "- Network connectivity issues"
+    echo "- Instance metadata service disabled"
+    echo "- IMDSv2 tokens required"
+    EC2_IP=""
 fi
 
 # Domain configuration
@@ -71,17 +100,40 @@ if [ -n "$EC2_IP" ]; then
     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
         DOMAIN_NAME="$EC2_IP"
         USE_CUSTOM_DOMAIN="false"
+        echo -e "${GREEN}✅ Using IP-based configuration: ${EC2_IP}${NC}"
+    else
+        # User chose not to use IP, ask for custom domain
+        echo "Enter your custom domain name (e.g., yourdomain.com):"
+        read -p "Domain: " DOMAIN_NAME
+        USE_CUSTOM_DOMAIN="true"
+        
+        if [ -z "$DOMAIN_NAME" ]; then
+            echo -e "${RED}❌ Domain name is required${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}✅ Using custom domain: ${DOMAIN_NAME}${NC}"
     fi
-fi
-
-if [ -z "$DOMAIN_NAME" ]; then
-    echo "Enter your custom domain name (e.g., yourdomain.com):"
-    read -p "Domain: " DOMAIN_NAME
-    USE_CUSTOM_DOMAIN="true"
+else
+    # No EC2 IP detected, ask user for input
+    echo -e "${YELLOW}Could not auto-detect EC2 IP.${NC}"
+    echo "Please choose:"
+    echo "1. Enter your EC2 public IP manually"
+    echo "2. Enter a custom domain name"
+    echo ""
+    read -p "Enter IP address or domain name: " DOMAIN_NAME
     
     if [ -z "$DOMAIN_NAME" ]; then
-        echo -e "${RED}❌ Domain name is required${NC}"
+        echo -e "${RED}❌ Domain or IP address is required${NC}"
         exit 1
+    fi
+    
+    # Check if it looks like an IP address
+    if [[ $DOMAIN_NAME =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        USE_CUSTOM_DOMAIN="false"
+        echo -e "${GREEN}✅ Using IP-based configuration: ${DOMAIN_NAME}${NC}"
+    else
+        USE_CUSTOM_DOMAIN="true"
+        echo -e "${GREEN}✅ Using custom domain: ${DOMAIN_NAME}${NC}"
     fi
 fi
 

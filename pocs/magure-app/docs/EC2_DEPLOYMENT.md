@@ -5,13 +5,14 @@ This guide will help you deploy MagLabs to EC2 with automated GitHub Actions dep
 ## 📋 Prerequisites
 
 - AWS account with EC2 access
-- GitHub repository with Actions enabled
-- Domain name (required for subdomain routing)
 - Basic command line knowledge
+- GitHub repository with Actions enabled (optional - for automated deployments)
+- Domain name (optional - for custom domain setup)
 
 ## 🖥️ Step 1: Launch EC2 Instance
 
 ### 1.1 Create EC2 Instance
+
 1. Go to AWS Console → EC2 → Launch Instance
 2. **AMI**: Ubuntu Server 22.04 LTS
 3. **Instance Type**: t3.medium (2 vCPU, 4GB RAM)
@@ -25,6 +26,7 @@ This guide will help you deploy MagLabs to EC2 with automated GitHub Actions dep
 7. Launch instance
 
 ### 1.2 Connect to Instance
+
 ```bash
 # SSH into your instance
 ssh -i your-key.pem ubuntu@your-ec2-ip
@@ -33,6 +35,7 @@ ssh -i your-key.pem ubuntu@your-ec2-ip
 ## 🔧 Step 2: Setup Server
 
 ### 2.1 Run Setup Script
+
 ```bash
 # Clone repository
 git clone https://github.com/your-username/your-repo.git
@@ -47,86 +50,87 @@ sudo reboot
 ```
 
 ### 2.2 Reconnect After Reboot
+
 ```bash
 ssh -i your-key.pem ubuntu@your-ec2-ip
 cd your-repo
 ```
 
-## ⚙️ Step 3: Configure Environment (Automated!)
+## 🚀 Step 3: Deploy Application (One Command!)
 
-### 3.1 Run Configuration Wizard
-
-```bash
-# This script auto-configures everything for you!
-./configure-ec2.sh
-```
-
-**The wizard will:**
-- ✅ Auto-detect your EC2 public IP
-- ✅ Generate secure database passwords and Django secret keys
-- ✅ Configure for IP-based access (simple) or custom domain (advanced)
-- ✅ Set up all environment variables correctly
-- ✅ Create a ready-to-use `.env.ec2` file
-
-### 3.2 Configuration Options
-
-**Option 1: IP-Based (Recommended for first-time):**
-- Uses your EC2 IP address directly
-- No DNS setup required
-- No SSL complexity
-- Perfect for testing and staging
-
-**Option 2: Custom Domain (Advanced):**
-- Uses your own domain name
-- Requires DNS configuration
-- Supports SSL certificates
-- Multi-tenant subdomain routing
-
-**Required Input:**
-- MagLabs API key (can be added later)
-- Email settings (optional, can skip)
-- Domain choice (IP vs custom domain)
-
-## 🚀 Step 4: Initial Deployment (One-Time Setup)
-
-### 4.1 First Deployment
+### 3.1 Single Command Deployment
 
 ```bash
-# Deploy the application (auto-runs configuration if needed)
+# ONE COMMAND DOES EVERYTHING!
 ./deploy-ec2.sh
 ```
 
-**The deployment will automatically:**
-- ✅ Run configuration wizard if `.env.ec2` needs setup
-- ✅ Create database initialization scripts with your password
-- ✅ Choose correct nginx config (IP-based vs domain-based)
-- ✅ Create data directories for persistent storage
-- ✅ Build all Docker containers
-- ✅ Start services with persistent volumes
-- ✅ Initialize PostgreSQL database and user
-- ✅ Run Django database migrations
-- ✅ Create Django superuser (admin/admin123)
-- ✅ Collect static files
-- ✅ Display access URLs
+**This automatically:**
 
-### 4.2 Verify Deployment
+- ✅ **Runs configuration wizard** if needed (auto-detects EC2 IP)
+- ✅ **Generates secure passwords** and Django secret keys
+- ✅ **Creates database** initialization scripts
+- ✅ **Chooses nginx config** (IP-based by default)
+- ✅ **Builds and starts** all Docker containers
+- ✅ **Sets up PostgreSQL** database and user
+- ✅ **Runs migrations** and creates admin user (admin/admin123)
+- ✅ **Shows access URLs** for your application
+
+### 3.2 What the Configuration Wizard Asks
+
+
+**Automatic Detection:**
+
+- ✅ **EC2 IP Address** - Auto-detected and used as default
+- ✅ **Secure Passwords** - Auto-generated for database and Django
+
+**User Input Required:**
+
+- **Domain Choice**: Use EC2 IP (simple) or custom domain (advanced)
+- **MagLabs API Key**: Your API key (can be added later)
+- **Email Settings**: SMTP settings (optional, can skip)
+
+**💡 Recommended for first-time: Choose IP-based setup!**
+
+## ✅ Step 4: Access Your Application
+
+### 4.1 Verify Deployment
 
 ```bash
 # Check service status
 docker-compose ps
 
-# Test access (script shows your actual URLs)
+# Test health endpoint
 curl http://YOUR-EC2-IP/health
 ```
 
-**You'll see URLs like:**
-- 🌍 Main Site: `http://YOUR-EC2-IP/`
-- 🔌 API: `http://YOUR-EC2-IP/api/`
-- ⚙️ Admin: `http://YOUR-EC2-IP/admin/`
+### 4.2 Access URLs
 
-**Default admin login:** admin/admin123
+**The deployment script shows your exact URLs:**
 
-## 🔧 Step 5: Setup GitHub Actions (Automated Deployments)
+- 🌍 **Main Site**: `http://YOUR-EC2-IP/`
+- 🔌 **API**: `http://YOUR-EC2-IP/api/`
+- ⚙️ **Admin**: `http://YOUR-EC2-IP/admin/`
+
+**Default admin login:**
+
+- Username: `admin`
+- Password: `admin123`
+
+### 4.3 Test Your Application
+
+```bash
+# Open in browser (replace with your actual IP)
+open http://YOUR-EC2-IP/
+
+# Test API health
+curl http://YOUR-EC2-IP/api/health/
+
+# Access admin panel
+open http://YOUR-EC2-IP/admin/
+```
+
+## 🤖 Step 5: Setup GitHub Actions (Optional - For Automated Deployments)
 
 ### 5.1 Configure GitHub Secrets
 
@@ -149,13 +153,29 @@ DEPLOY_PATH=/opt/maglabs          # Optional, defaults to /opt/maglabs
 - Pull request merge → Automatic deployment
 
 **Manual Trigger:**
+
 - Go to GitHub → Actions tab
 - Click "Deploy to EC2" workflow
 - Click "Run workflow" button
 
-## 🌐 Step 6: Configure Domain & SSL
+## 🌐 Step 6: Upgrade to Custom Domain (Optional - For Production)
 
-### 6.1 DNS Configuration
+### 6.1 When to Use Custom Domain
+
+**Stick with IP if:**
+
+- ✅ Testing/staging environment
+- ✅ Quick demo or proof of concept
+- ✅ Internal team access only
+
+**Upgrade to domain if:**
+
+- 🚀 Production deployment
+- 🚀 Public-facing application
+- 🚀 Need SSL/HTTPS
+- 🚀 Multi-tenant subdomains
+
+### 6.2 DNS Configuration
 
 **Point these DNS records to your EC2 IP:**
 
@@ -166,7 +186,8 @@ A     api.yourdomain.com      → YOUR-EC2-IP
 A     admin.yourdomain.com    → YOUR-EC2-IP
 ```
 
-### 6.2 SSL Certificate Setup
+### 6.3 SSL Certificate Setup
+
 ```bash
 # Install certbot and get wildcard SSL certificate
 sudo certbot certonly --dns-route53 -d yourdomain.com -d *.yourdomain.com
@@ -174,7 +195,17 @@ sudo certbot certonly --dns-route53 -d yourdomain.com -d *.yourdomain.com
 sudo certbot certonly --manual -d yourdomain.com -d *.yourdomain.com
 ```
 
-### 6.3 Access Your Multi-Tenant Application
+### 6.4 Reconfigure for Domain
+
+```bash
+# Run configuration again to switch to domain mode
+./configure-ec2.sh
+# Choose "Custom Domain" option this time
+# Then redeploy
+./deploy-ec2.sh
+```
+
+### 6.5 Access Your Multi-Tenant Application
 
 **Production URLs:**
 
@@ -226,12 +257,14 @@ docker-compose restart
 ### Database Operations
 
 **Automated Backup (recommended):**
+
 ```bash
 # Create timestamped backup with compression
 ./scripts/backup-db.sh
 ```
 
 **Manual Backup:**
+
 ```bash
 # Create backup
 docker-compose exec postgres pg_dump -U maglabs_user maglabs_prod > backup.sql
@@ -241,6 +274,7 @@ cat backup.sql | docker-compose exec -T postgres psql -U maglabs_user maglabs_pr
 ```
 
 **View Backups:**
+
 ```bash
 # List all backups
 ls -la backups/
@@ -254,6 +288,7 @@ gunzip -c backups/maglabs_backup_20240616_143022.sql.gz | docker-compose exec -T
 **⚠️ Only use these if GitHub Actions fails:**
 
 ### Manual Deployment
+
 ```bash
 # SSH into server
 ssh -i your-key.pem ubuntu@your-ec2-ip
@@ -267,6 +302,7 @@ git pull origin main
 ## 🛠️ Troubleshooting
 
 ### Services Won't Start
+
 ```bash
 # Check Docker is running
 sudo systemctl status docker
@@ -279,6 +315,7 @@ docker-compose build --no-cache
 ```
 
 ### Database Connection Issues
+
 ```bash
 # Check postgres logs
 docker-compose logs postgres
@@ -289,6 +326,7 @@ docker-compose down -v
 ```
 
 ### Can't Access Application
+
 ```bash
 # Check security groups allow HTTP/HTTPS
 # Check nginx status
@@ -301,6 +339,7 @@ curl localhost
 ## 🏗️ Architecture Overview
 
 ### Multi-Tenant Subdomain Routing
+
 ```
 🌐 Internet
     ↓
@@ -324,6 +363,7 @@ curl localhost
 ```
 
 ### Key Features
+
 - ✅ **Persistent Database**: Data survives container restarts
 - ✅ **Automated Backups**: Timestamped, compressed backups
 - ✅ **SSL/HTTPS**: Let's Encrypt certificates
@@ -334,6 +374,7 @@ curl localhost
 ## 💰 Cost Estimation
 
 **Monthly costs for t3.medium:**
+
 - EC2 Instance: ~$30-40/month
 - Storage (20GB): ~$2/month
 - Data Transfer: ~$1-5/month
@@ -350,6 +391,7 @@ curl localhost
 ## 📞 Support
 
 If you encounter issues:
+
 1. Check logs: `docker-compose logs`
 2. Verify environment variables in `.env.ec2`
 3. Ensure security groups are correct
@@ -358,6 +400,7 @@ If you encounter issues:
 ## 🚀 Understanding Your Automated Deployment
 
 ### What Happens on Every Git Push
+
 ```
 📝 You: git push origin main
      ↓
@@ -381,6 +424,7 @@ If you encounter issues:
 - Get email notifications on success/failure
 
 **Quick Health Check:**
+
 ```bash
 # Check if everything is running (from anywhere)
 curl https://yourdomain.com/health
@@ -412,15 +456,30 @@ If something goes wrong:
 
 ## 📋 Quick Summary
 
-**One-Time Setup (30 minutes):**
-1. Launch EC2 instance
-2. Run `setup-ec2.sh` and `deploy-ec2.sh`
-3. Configure GitHub secrets
-4. Set up DNS records
+**🚀 Basic Setup (10 minutes):**
 
-**Daily Operations (5 seconds):**
+1. Launch EC2 instance
+2. Clone repo and run `./setup-ec2.sh`
+3. Run `./deploy-ec2.sh` (handles everything automatically!)
+4. Access your app at `http://YOUR-EC2-IP/`
+
+**🤖 Optional: Automated Deployments:**
+
+- Configure GitHub secrets
+- Push code → auto-deploy
+
+**🌐 Optional: Custom Domain:**
+
+- Set up DNS records
+- Run `./configure-ec2.sh` again
+- Choose domain option and redeploy
+
+**Daily Operations:**
+
 ```bash
-git push origin main  # That's it! ✨
+git push origin main  # Auto-deploys if GitHub Actions configured
+# OR
+./deploy-ec2.sh      # Manual deployment
 ```
 
 This setup is perfect for staging and production deployments up to moderate scale. For enterprise scale, consider managed services like RDS, ELB, and ECS.

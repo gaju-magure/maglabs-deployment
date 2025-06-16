@@ -10,7 +10,7 @@ echo "============================"
 # Configuration
 DEFAULT_EC2_IP="3.108.58.153"
 GITHUB_REPO="gaju-magure/maglabs-deployment"
-SSH_KEY_PATH="$HOME/.ssh/magure-app-key.pem"
+SSH_KEY_PATH="${SSH_KEY_PATH:-./maglasb-app-ssh.pem}"
 
 # Function to generate secure secret key
 generate_secret_key() {

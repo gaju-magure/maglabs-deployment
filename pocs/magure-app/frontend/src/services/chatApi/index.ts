@@ -55,6 +55,8 @@ export interface ChatSessionDetail extends ChatSession {
   can_submit_idea: boolean;
   total_tokens_used: number;
   updated_at: string;
+  stage_progress?: number;
+  current_stage?: string;
   ai_metadata: {
     interview_session_id?: string;
     interview_stage?: string;
@@ -62,6 +64,62 @@ export interface ChatSessionDetail extends ChatSession {
     started_at?: string;
     last_updated?: string;
   };
+  // Enhanced MagLabs metadata
+  conversation_momentum?: number;
+  progress_velocity?: number;
+  conversation_health?: 'excellent' | 'good' | 'fair' | 'poor';
+  estimated_remaining_seconds?: number;
+  quality_metrics?: {
+    information_density?: number;
+    user_engagement?: number;
+    question_to_answer_ratio?: number;
+    stage_progression_rate?: number;
+    repetition_score?: number;
+    coherence_score?: number;
+    stuck_indicators?: string[];
+    progress_indicators?: string[];
+    intervention_suggestions?: string[];
+  };
+  ai_state?: {
+    response_confidence?: number;
+    assumptions_made?: string[];
+    assumption_confidence?: number;
+    clarification_needed?: boolean;
+    clarification_topics?: string[];
+    reasoning?: string;
+    alternative_approaches?: string[];
+  };
+  business_context?: {
+    problem_clarity?: number;
+    solution_readiness?: number;
+    urgency_level?: 'low' | 'medium' | 'high' | 'critical';
+    budget_signals?: 'startup' | 'business' | 'enterprise';
+    decision_authority?: 'low' | 'medium' | 'high';
+    technical_sophistication?: number;
+    implementation_readiness?: number;
+    stakeholder_engagement?: number;
+    pain_points?: string[];
+    success_criteria?: string[];
+  };
+  stage_completion?: {
+    user_profiling?: number;
+    problem_capture?: number;
+    problem_clarification?: number;
+    solution_brainstorming?: number;
+    value_proposition?: number;
+    report_generation?: number;
+  };
+  next_actions?: {
+    recommended_stage?: string;
+    transition_ready?: boolean;
+    client_actions?: string[];
+    estimated_completion?: string;
+    suggested_questions?: string[];
+    preparation_items?: string[];
+    potential_blockers?: string[];
+  };
+  flow_issues?: string[];
+  transition_triggers?: string[];
 }
 
 export interface ChatTemplate {
@@ -274,8 +332,48 @@ export async function deleteSession(sessionId: string): Promise<void> {
   );
   
   if (!response.ok) {
-    throw new Error('Failed to delete session');
+    const errorText = await response.text();
+    let errorMessage = 'Failed to delete session';
+    
+    try {
+      const errorData = JSON.parse(errorText);
+      if (errorData.error) {
+        errorMessage = errorData.error;
+      }
+    } catch {
+      // Use default error message if JSON parsing fails
+    }
+    
+    throw new Error(errorMessage);
   }
+}
+
+export async function deleteAllSessions(): Promise<{message: string, deleted_count: number}> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/v1/ideas/chat/sessions/delete_all_sessions/`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    }
+  );
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = 'Failed to delete all sessions';
+    
+    try {
+      const errorData = JSON.parse(errorText);
+      if (errorData.error) {
+        errorMessage = errorData.error;
+      }
+    } catch {
+      // Use default error message if JSON parsing fails
+    }
+    
+    throw new Error(errorMessage);
+  }
+  
+  return response.json();
 }
 
 export async function submitChatAsIdea(

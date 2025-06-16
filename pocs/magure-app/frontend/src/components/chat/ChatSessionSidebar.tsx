@@ -12,37 +12,28 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { cn } from '@/lib/utils';
+import { BeautifulTooltip, ChatSessionTooltipContent } from '@/components/ui/beautiful-tooltip';
 import { 
   listChatSessions, 
   createChatSession, 
   archiveSession,
+  deleteSession,
   deleteAllSessions,
   type ChatSession 
 } from '@/services/chatApi';
 
 interface ChatSessionSidebarProps {
   onClose?: () => void;
+  isMobile?: boolean;
 }
 
-export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose }) => {
+export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose, isMobile = false }) => {
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId?: string }>();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
-  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
   
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ['chatSessions', showArchived ? 'archived' : 'active', searchQuery],
@@ -76,6 +67,32 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
     mutationFn: archiveSession,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatSessions'] });
+      toast.success('Chat archived successfully');
+    },
+    onError: (error) => {
+      console.error('Failed to archive session:', error);
+      toast.error('Failed to archive chat. Please try again.');
+    },
+  });
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: deleteSession,
+    onSuccess: (_, deletedSessionId) => {
+      queryClient.invalidateQueries({ queryKey: ['chatSessions'] });
+      toast.success('Chat deleted successfully');
+      
+      // Navigate to chat home if current session was deleted
+      if (deletedSessionId === sessionId) {
+        navigate('/dashboard/chat');
+      }
+    },
+    onError: (error) => {
+      console.error('Failed to delete session:', error);
+      if (error.message.includes('submitted idea')) {
+        toast.error('Cannot delete chat with submitted idea.');
+      } else {
+        toast.error('Failed to delete chat. Please try again.');
+      }
     },
   });
   
@@ -83,8 +100,13 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
     mutationFn: deleteAllSessions,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['chatSessions'] });
-      toast.success(data.message);
-      setShowDeleteAllDialog(false);
+      const protectedCount = sessions.filter(s => s.is_idea_submitted).length;
+      
+      if (protectedCount > 0) {
+        toast.success(`${data.deleted_count} chats deleted. ${protectedCount} submitted ideas were protected.`);
+      } else {
+        toast.success(data.message);
+      }
       
       // Navigate to chat home if current session was deleted
       if (sessionId) {
@@ -96,6 +118,23 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
       toast.error('Failed to delete all sessions. Please try again.');
     },
   });
+
+  // Helper functions for chat protection
+  const canDeleteSession = (session: ChatSession): boolean => {
+    return !session.is_idea_submitted;
+  };
+
+  const handleDeleteSession = (sessionId: string) => {
+    deleteSessionMutation.mutate(sessionId);
+  };
+
+  const handleDeleteAllSessions = () => {
+    deleteAllMutation.mutate();
+  };
+
+  // Calculate deletable vs protected sessions
+  const deletableSessions = sessions.filter(canDeleteSession);
+  const protectedSessions = sessions.filter(s => s.is_idea_submitted);
   
   const handleNewChat = () => {
     createSessionMutation.mutate({
@@ -143,7 +182,7 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
   
   return (
     <>
-      <div className="w-80 flex flex-col relative overflow-hidden min-w-0 h-full">
+      <div className={`${isMobile ? 'w-full' : 'w-80'} flex flex-col relative overflow-hidden min-w-0 h-full`}>
         {/* Glass Background with Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-white/60 to-purple-50/80 backdrop-blur-xl border-r border-white/20" />
         <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
@@ -151,6 +190,17 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
         {/* Header with Glass Effect */}
         <div className="relative z-10 p-4 border-b border-white/20">
           <div className="flex items-center gap-3">
+            {/* Mobile close button */}
+            {isMobile && onClose && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="h-8 w-8 text-gray-600 hover:text-gray-800 hover:bg-white/30 rounded-lg transition-colors flex-shrink-0"
+              >
+                <X size={16} />
+              </Button>
+            )}
             
             <div className="flex-1 glass-container bg-white/20 backdrop-blur-md rounded-xl p-3 border border-white/30 shadow-lg transition-all duration-300 hover:bg-white/25 hover:shadow-xl">
               <Button
@@ -171,7 +221,7 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
         </div>
         
         {/* Search with Glass Effect */}
-        <div className="relative z-10 p-4 border-b border-white/20">
+        <div className={`relative z-10 ${isMobile ? 'p-3' : 'p-4'} border-b border-white/20`}>
           <div className="glass-container bg-white/15 backdrop-blur-md rounded-xl p-3 border border-white/30 shadow-lg">
             <div className="relative">
               <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white/20 rounded-full flex items-center justify-center">
@@ -182,7 +232,7 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-white/50 backdrop-blur-sm border-white/30 focus:border-blue-400/50 focus:ring-blue-400/30 placeholder:text-gray-500 transition-all duration-300"
+                className={`pl-10 bg-white/50 backdrop-blur-sm border-white/30 focus:border-blue-400/50 focus:ring-blue-400/30 placeholder:text-gray-500 transition-all duration-300 ${isMobile ? 'h-11' : ''}`}
               />
             </div>
           </div>
@@ -190,7 +240,7 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
       
         {/* Session List with Glass Effect */}
         <ScrollArea className="relative z-10 flex-1">
-          <div className="p-2 space-y-3">
+          <div className={`${isMobile ? 'p-3' : 'p-2'} space-y-3`}>
             {isLoading ? (
               <div className="text-center py-8">
                 <div className="glass-container bg-white/20 backdrop-blur-md rounded-xl p-4 border border-white/30 shadow-lg">
@@ -213,7 +263,7 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
                         {groupName}
                       </h3>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       {groupSessions.map((session) => (
                         <SessionItem
                           key={session.id}
@@ -221,6 +271,8 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
                           isActive={session.id === sessionId}
                           onClick={() => navigate(`/dashboard/chat/${session.id}`)}
                           onArchive={() => archiveMutation.mutate(session.id)}
+                          onDelete={() => handleDeleteSession(session.id)}
+                          isDeleting={deleteSessionMutation.isPending}
                         />
                       ))}
                     </div>
@@ -250,7 +302,7 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
         </ScrollArea>
       
         {/* Footer with Glass Effect */}
-        <div className="relative z-10 p-4 border-t border-white/20">
+        <div className={`relative z-10 ${isMobile ? 'p-3' : 'p-4'} border-t border-white/20`}>
           <div className="space-y-3">
             {/* Archive Toggle */}
             <div className="glass-container bg-white/15 backdrop-blur-md rounded-xl p-2 border border-white/30 shadow-lg">
@@ -270,40 +322,37 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({ onClose 
             </div>
             
             {/* Delete All Button */}
-            {!showArchived && sessions.length > 0 && (
+            {!showArchived && deletableSessions.length > 0 && (
               <div className="glass-container bg-gradient-to-r from-red-500/20 to-pink-500/20 backdrop-blur-md rounded-xl p-2 border border-red-300/30 shadow-lg hover:from-red-500/30 hover:to-pink-500/30 transition-all duration-300">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="w-full justify-start gap-3 text-red-700 hover:text-red-800 hover:bg-red-100/50 transition-all duration-300"
-                  onClick={() => setShowDeleteAllDialog(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDeleteAllSessions();
+                  }}
                   disabled={deleteAllMutation.isPending}
                 >
                   <div className="w-4 h-4 bg-red-500/20 rounded-full flex items-center justify-center">
                     <Trash2 size={12} className="text-red-600" />
                   </div>
                   <span className="font-medium">
-                    {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All Chats'}
+                    {deleteAllMutation.isPending ? 'Deleting...' : `Delete ${deletableSessions.length} Chat${deletableSessions.length !== 1 ? 's' : ''}`}
                   </span>
                 </Button>
+                {protectedSessions.length > 0 && (
+                  <p className="text-xs text-red-600 mt-1 px-2">
+                    {protectedSessions.length} submitted idea{protectedSessions.length !== 1 ? 's' : ''} will be protected
+                  </p>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
       
-      {/* Delete All Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={showDeleteAllDialog}
-        onClose={() => setShowDeleteAllDialog(false)}
-        onConfirm={() => deleteAllMutation.mutate()}
-        title="Delete All Conversations"
-        description={`Are you sure you want to delete all ${sessions.length} conversation${sessions.length !== 1 ? 's' : ''}? This action cannot be undone.`}
-        confirmText="Delete All"
-        cancelText="Cancel"
-        variant="destructive"
-        isLoading={deleteAllMutation.isPending}
-      />
     </>
   );
 };
@@ -313,105 +362,127 @@ interface SessionItemProps {
   isActive: boolean;
   onClick: () => void;
   onArchive: () => void;
+  onDelete: () => void;
+  isDeleting: boolean;
 }
 
-const SessionItem: React.FC<SessionItemProps> = ({ session, isActive, onClick, onArchive }) => {
+const SessionItem: React.FC<SessionItemProps> = ({ session, isActive, onClick, onArchive, onDelete, isDeleting }) => {
   return (
-    <div
-      className={cn(
-        "group relative flex flex-col gap-2 p-3 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-[1.02]",
-        isActive 
-          ? "glass-container bg-slate-800/85 backdrop-blur-md border border-slate-600/50 shadow-lg shadow-slate-900/30" 
-          : "glass-container bg-white/20 backdrop-blur-md border border-white/30 shadow-lg hover:bg-white/30 hover:shadow-xl hover:border-white/40"
-      )}
-      onClick={onClick}
+    <BeautifulTooltip
+      content={
+        <ChatSessionTooltipContent
+          title={session.title}
+          preview={session.last_message_preview || ''}
+          timeAgo={session.time_ago}
+          messageCount={session.message_count}
+          isIdeaSubmitted={session.is_idea_submitted}
+        />
+      }
+      variant="glass"
+      size="lg"
+      position="right"
+      mobileEnabled={false} // Disable on mobile to avoid conflicts with touch interactions
     >
-      <div className="flex items-start justify-between gap-3">
+      <div
+        className={cn(
+          "group relative flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all duration-300",
+          isActive 
+            ? "glass-container bg-slate-800/85 backdrop-blur-md border border-slate-600/50 shadow-lg shadow-slate-900/30" 
+            : "glass-container bg-white/20 backdrop-blur-md border border-white/30 shadow-lg hover:bg-white/30 hover:shadow-xl hover:border-white/40"
+        )}
+        onClick={onClick}
+      >
         <div className={cn(
-          "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300",
+          "w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-300",
           isActive 
             ? "bg-slate-700/60 shadow-lg border border-slate-500/30" 
             : "bg-white/20 group-hover:bg-white/30"
         )}>
-          <MessageSquare size={14} className={isActive ? "text-gray-200" : "text-gray-600"} />
+          <MessageSquare size={12} className={isActive ? "text-gray-200" : "text-gray-600"} />
         </div>
         
         <div className="flex-1 min-w-0">
           <h4 className={cn(
-            "font-semibold text-sm truncate transition-colors duration-300",
+            "font-medium text-sm truncate transition-colors duration-300",
             isActive ? "text-gray-100" : "text-gray-800 group-hover:text-gray-900"
           )}>
             {session.title}
           </h4>
-          <p className={cn(
-            "text-xs truncate transition-colors duration-300 mt-1",
-            isActive ? "text-gray-300" : "text-gray-500 group-hover:text-gray-600"
-          )}>
-            {session.last_message_preview}
-          </p>
         </div>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "h-6 w-6 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110",
-                isActive ? "text-gray-200 hover:bg-slate-700/50" : "text-gray-600 hover:bg-white/30"
-              )}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreHorizontal size={12} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass-container bg-white/80 backdrop-blur-md border border-white/30">
-            <DropdownMenuItem 
-              onClick={onArchive}
-              className="hover:bg-white/50 transition-colors duration-200"
-            >
-              <Archive size={14} className="mr-2" />
-              Archive
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      
-      <div className="flex items-center justify-between text-xs">
-        <span className={cn(
-          "transition-colors duration-300",
-          isActive ? "text-gray-400" : "text-gray-500"
-        )}>
-          {session.time_ago}
-        </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 flex-shrink-0">
           {session.is_idea_submitted && (
             <div className={cn(
-              "glass-container backdrop-blur-sm border px-2 py-1 rounded-lg",
-              isActive 
-                ? "bg-green-500/20 border-green-400/30" 
-                : "bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-green-400/40"
-            )}>
-              <span className={cn(
-                "text-xs font-medium",
-                isActive ? "text-green-300" : "text-green-700"
-              )}>
-                💡 Submitted
-              </span>
-            </div>
+              "w-2 h-2 rounded-full",
+              isActive ? "bg-green-400" : "bg-green-500"
+            )}
+            title="Idea Submitted"
+            />
           )}
           {session.message_count > 0 && (
-            <div className={cn(
-              "glass-container backdrop-blur-sm px-2 py-1 rounded-lg transition-all duration-300",
+            <span className={cn(
+              "text-xs px-1.5 py-0.5 rounded-md transition-all duration-300",
               isActive 
                 ? "bg-slate-700/50 border border-slate-500/30 text-gray-300" 
                 : "bg-white/30 border border-white/40 text-gray-600"
             )}>
-              <span className="text-xs font-medium">{session.message_count}</span>
-            </div>
+              {session.message_count}
+            </span>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-5 w-5 opacity-0 group-hover:opacity-100 transition-all duration-300",
+                  isActive ? "text-gray-200 hover:bg-slate-700/50" : "text-gray-600 hover:bg-white/30"
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal size={10} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="glass-container bg-white/80 backdrop-blur-md border border-white/30">
+              <DropdownMenuItem 
+                onClick={onArchive}
+                className="hover:bg-white/50 transition-colors duration-200"
+              >
+                <Archive size={14} className="mr-2" />
+                Archive
+              </DropdownMenuItem>
+              {!session.is_idea_submitted ? (
+                <DropdownMenuItem 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  disabled={isDeleting}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors duration-200"
+                >
+                  <Trash2 size={14} className="mr-2" />
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </DropdownMenuItem>
+              ) : (
+                <BeautifulTooltip
+                  content="Submitted ideas cannot be deleted for compliance reasons"
+                  variant="warning"
+                  size="sm"
+                >
+                  <DropdownMenuItem 
+                    disabled
+                    className="text-gray-400 cursor-not-allowed"
+                  >
+                    <Trash2 size={14} className="mr-2" />
+                    Delete (Protected)
+                  </DropdownMenuItem>
+                </BeautifulTooltip>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-    </div>
+    </BeautifulTooltip>
   );
 };

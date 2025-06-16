@@ -156,9 +156,9 @@ class MagLabsService:
             headers['X-Session-ID'] = session_id
         
         # Add JWT token for authentication if provided (prioritize parameter over instance)
-        token_to_use = auth_token or self.auth_token
-        if token_to_use:
-            headers['Authorization'] = f'Bearer {token_to_use}'
+        # token_to_use = auth_token or self.auth_token
+        # if token_to_use:
+        #     headers['Authorization'] = f'Bearer {token_to_use}'
         
         try:
             # Check API health first
@@ -192,12 +192,28 @@ class MagLabsService:
             return {
                 'content': message_content,
                 'session_id': session_id,
-                'stage': parsed_metadata.get('stage', 'user_profiling'),  # Legacy compatibility
+                
+                # Legacy compatibility fields
+                'stage': parsed_metadata.get('stage', 'user_profiling'),
                 'stage_progress': parsed_metadata.get('stage_progress', 0.0),
                 'conversation_health': parsed_metadata.get('conversation_health', 'good'),
                 'business_context': parsed_metadata.get('business_context', {}),
                 'suggested_actions': parsed_metadata.get('suggested_actions', []),
-                # Enhanced stage progression data
+                
+                # Enhanced MagLabs metadata - conversation state
+                'conversation_momentum': parsed_metadata.get('conversation_momentum', 0.0),
+                'progress_velocity': parsed_metadata.get('progress_velocity', 0.0),
+                'estimated_remaining_seconds': parsed_metadata.get('estimated_remaining_seconds', 0),
+                'flow_issues': parsed_metadata.get('flow_issues', []),
+                'transition_triggers': parsed_metadata.get('transition_triggers', []),
+                
+                # Quality metrics and AI transparency
+                'quality_metrics': parsed_metadata.get('quality_metrics', {}),
+                'ai_state': parsed_metadata.get('ai_state', {}),
+                'next_actions': parsed_metadata.get('next_actions', {}),
+                'stage_completion': parsed_metadata.get('stage_completion', {}),
+                
+                # Enhanced stage progression data (maintained for backward compatibility)
                 'stage_data': {
                     'stage_name': parsed_metadata.get('stage_name', 'user_profiling'),
                     'stage_completion': parsed_metadata.get('stage_completion', {}),
@@ -207,13 +223,22 @@ class MagLabsService:
                     'next_stage': parsed_metadata.get('next_stage'),
                     'ai_confidence': parsed_metadata.get('ai_confidence', 0.8),
                     'assumptions_made': parsed_metadata.get('assumptions_made', []),
-                    'clarification_needed': parsed_metadata.get('clarification_needed', False)
+                    'clarification_needed': parsed_metadata.get('clarification_needed', False),
+                    
+                    # Enhanced fields
+                    'conversation_momentum': parsed_metadata.get('conversation_momentum', 0.0),
+                    'progress_velocity': parsed_metadata.get('progress_velocity', 0.0),
+                    'quality_indicators': parsed_metadata.get('quality_metrics', {}).get('progress_indicators', []),
+                    'intervention_suggestions': parsed_metadata.get('quality_metrics', {}).get('intervention_suggestions', []),
+                    'flow_issues': parsed_metadata.get('flow_issues', [])
                 },
+                
                 'metadata': {
                     'model': data.get('model'),
                     'usage': data.get('usage', {}),
                     'timestamp': timezone.now().isoformat(),
-                    'raw_metadata': raw_metadata
+                    'raw_metadata': raw_metadata,
+                    'parsing_summary': parsed_metadata.get('metadata_summary', {})
                 }
             }
             
@@ -340,12 +365,28 @@ class MagLabsService:
             return {
                 'content': message_content,
                 'session_id': session_id,
-                'stage': parsed_metadata.get('stage', 'user_profiling'),  # Legacy compatibility
+                
+                # Legacy compatibility fields
+                'stage': parsed_metadata.get('stage', 'user_profiling'),
                 'stage_progress': parsed_metadata.get('stage_progress', 0.0),
                 'conversation_health': parsed_metadata.get('conversation_health', 'good'),
                 'business_context': parsed_metadata.get('business_context', {}),
                 'suggested_actions': parsed_metadata.get('suggested_actions', []),
-                # Enhanced stage progression data
+                
+                # Enhanced MagLabs metadata - conversation state
+                'conversation_momentum': parsed_metadata.get('conversation_momentum', 0.0),
+                'progress_velocity': parsed_metadata.get('progress_velocity', 0.0),
+                'estimated_remaining_seconds': parsed_metadata.get('estimated_remaining_seconds', 0),
+                'flow_issues': parsed_metadata.get('flow_issues', []),
+                'transition_triggers': parsed_metadata.get('transition_triggers', []),
+                
+                # Quality metrics and AI transparency
+                'quality_metrics': parsed_metadata.get('quality_metrics', {}),
+                'ai_state': parsed_metadata.get('ai_state', {}),
+                'next_actions': parsed_metadata.get('next_actions', {}),
+                'stage_completion': parsed_metadata.get('stage_completion', {}),
+                
+                # Enhanced stage progression data (maintained for backward compatibility)
                 'stage_data': {
                     'stage_name': parsed_metadata.get('stage_name', 'user_profiling'),
                     'stage_completion': parsed_metadata.get('stage_completion', {}),
@@ -355,13 +396,22 @@ class MagLabsService:
                     'next_stage': parsed_metadata.get('next_stage'),
                     'ai_confidence': parsed_metadata.get('ai_confidence', 0.8),
                     'assumptions_made': parsed_metadata.get('assumptions_made', []),
-                    'clarification_needed': parsed_metadata.get('clarification_needed', False)
+                    'clarification_needed': parsed_metadata.get('clarification_needed', False),
+                    
+                    # Enhanced fields
+                    'conversation_momentum': parsed_metadata.get('conversation_momentum', 0.0),
+                    'progress_velocity': parsed_metadata.get('progress_velocity', 0.0),
+                    'quality_indicators': parsed_metadata.get('quality_metrics', {}).get('progress_indicators', []),
+                    'intervention_suggestions': parsed_metadata.get('quality_metrics', {}).get('intervention_suggestions', []),
+                    'flow_issues': parsed_metadata.get('flow_issues', [])
                 },
+                
                 'metadata': {
                     'model': data.get('model'),
                     'usage': data.get('usage', {}),
                     'timestamp': timezone.now().isoformat(),
                     'raw_metadata': raw_metadata,
+                    'parsing_summary': parsed_metadata.get('metadata_summary', {}),
                     'session_reset': True
                 }
             }
@@ -413,84 +463,187 @@ class MagLabsService:
             raise ConnectionError("MagLabs API is not reachable at http://localhost:8001")
     
     def _parse_maglabs_metadata(self, raw_metadata: Dict[str, Any]) -> Dict[str, Any]:
-        """Parse MagLabs API metadata into structured format for stage progression."""
+        """Parse MagLabs API metadata into comprehensive structured format for enhanced stage progression."""
         parsed = {}
         
-        # Parse conversation state
+        # Parse conversation state (core conversation metrics)
+        conversation_data = {}
         if 'conversation' in raw_metadata:
             try:
                 conv_data = json.loads(raw_metadata['conversation']) if isinstance(raw_metadata['conversation'], str) else raw_metadata['conversation']
+                conversation_data = conv_data
+                
+                # Core fields for backward compatibility
                 parsed['stage_name'] = conv_data.get('stage', 'user_profiling')
                 parsed['stage_progress'] = conv_data.get('stage_progress', 0.0)
                 parsed['session_id'] = conv_data.get('conversation_id')
                 parsed['stage'] = conv_data.get('stage', 'user_profiling')  # Legacy compatibility
+                
+                # Enhanced conversation metrics
+                parsed['conversation_momentum'] = conv_data.get('conversation_momentum', 0.0)
+                parsed['estimated_remaining_seconds'] = conv_data.get('estimated_remaining_seconds', 0)
+                parsed['total_exchanges'] = conv_data.get('total_exchanges', 0)
+                parsed['stage_duration_seconds'] = conv_data.get('stage_duration_seconds', 0)
+                parsed['transition_triggers'] = conv_data.get('transition_triggers', [])
+                parsed['flow_issues'] = conv_data.get('flow_issues', [])
+                parsed['automation_level'] = conv_data.get('automation_level', 0.0)
+                
             except (json.JSONDecodeError, TypeError):
                 logger.warning("Failed to parse conversation metadata")
-                parsed['stage_name'] = 'user_profiling'
-                parsed['stage'] = 'user_profiling'
+                parsed.update({
+                    'stage_name': 'user_profiling',
+                    'stage': 'user_profiling',
+                    'conversation_momentum': 0.0,
+                    'flow_issues': [],
+                    'transition_triggers': []
+                })
         
-        # Parse stage completion scores
+        # Parse stage completion scores (detailed stage progression)
+        stage_completion_data = {}
         if 'stage_completion' in raw_metadata:
             try:
                 stage_data = json.loads(raw_metadata['stage_completion']) if isinstance(raw_metadata['stage_completion'], str) else raw_metadata['stage_completion']
+                stage_completion_data = stage_data
                 parsed['stage_completion'] = stage_data
             except (json.JSONDecodeError, TypeError):
                 logger.warning("Failed to parse stage completion metadata")
                 parsed['stage_completion'] = {}
         
-        # Parse business context with specific scores
+        # Parse business context with comprehensive business intelligence
         business_context = {}
         if 'business_context' in raw_metadata:
             try:
                 business_data = json.loads(raw_metadata['business_context']) if isinstance(raw_metadata['business_context'], str) else raw_metadata['business_context']
                 business_context.update(business_data)
+                
+                # Structure business context for frontend
+                parsed['business_context'] = {
+                    'problem_clarity': business_context.get('problem_clarity', 0.0),
+                    'solution_readiness': business_context.get('solution_readiness', 0.0),
+                    'technical_sophistication': business_context.get('technical_sophistication', 0.5),
+                    'implementation_readiness': business_context.get('implementation_readiness', 0.0),
+                    'stakeholder_engagement': business_context.get('stakeholder_engagement', 0.5),
+                    'urgency_level': business_context.get('urgency_level', 'medium'),
+                    'budget_signals': business_context.get('budget_signals', 'business'),
+                    'decision_authority': business_context.get('decision_authority', 'medium'),
+                    'pain_points': business_context.get('pain_points', []),
+                    'success_criteria': business_context.get('success_criteria', []),
+                    'business_drivers': business_context.get('business_drivers', [])
+                }
             except (json.JSONDecodeError, TypeError):
                 logger.warning("Failed to parse business context metadata")
+                parsed['business_context'] = {
+                    'problem_clarity': 0.0,
+                    'solution_readiness': 0.0,
+                    'urgency_level': 'medium',
+                    'budget_signals': 'business',
+                    'decision_authority': 'medium'
+                }
         
-        # Extract specific business scores from various metadata fields
-        parsed['business_context'] = {
-            'problem_clarity': business_context.get('problem_clarity', 0.0),
-            'solution_readiness': business_context.get('solution_readiness', 0.0),
-            'profile_completion_score': business_context.get('profile_completion_score', 0.0),
-            'technical_sophistication': business_context.get('technical_sophistication', 0.5),
-            'implementation_readiness': business_context.get('implementation_readiness', 0.0),
-            'stakeholder_engagement': business_context.get('stakeholder_engagement', 0.5),
-            'urgency_level': business_context.get('urgency_level', 'unknown'),
-            'budget_signals': business_context.get('budget_signals', 'unknown'),
-            'decision_authority': business_context.get('decision_authority', 'unknown'),
-            **business_context  # Include any additional business context data
-        }
-        
-        # Parse quality metrics for health status
+        # Parse quality metrics (conversation health and performance)
+        quality_metrics = {}
         if 'quality_metrics' in raw_metadata:
             try:
                 quality_data = json.loads(raw_metadata['quality_metrics']) if isinstance(raw_metadata['quality_metrics'], str) else raw_metadata['quality_metrics']
+                quality_metrics = quality_data
+                
                 parsed['conversation_health'] = quality_data.get('conversation_health', 'good')
+                parsed['progress_velocity'] = quality_data.get('progress_velocity', 0.0)
+                parsed['quality_metrics'] = {
+                    'information_density': quality_data.get('information_density', 0.0),
+                    'user_engagement': quality_data.get('user_engagement', 0.0),
+                    'question_to_answer_ratio': quality_data.get('question_to_answer_ratio', 0.0),
+                    'stage_progression_rate': quality_data.get('stage_progression_rate', 0.0),
+                    'repetition_score': quality_data.get('repetition_score', 0.0),
+                    'coherence_score': quality_data.get('coherence_score', 0.0),
+                    'stuck_indicators': quality_data.get('stuck_indicators', []),
+                    'progress_indicators': quality_data.get('progress_indicators', []),
+                    'intervention_suggestions': quality_data.get('intervention_suggestions', [])
+                }
             except (json.JSONDecodeError, TypeError):
                 logger.warning("Failed to parse quality metrics metadata")
-                parsed['conversation_health'] = 'good'
+                parsed.update({
+                    'conversation_health': 'good',
+                    'progress_velocity': 0.0,
+                    'quality_metrics': {
+                        'intervention_suggestions': [],
+                        'stuck_indicators': [],
+                        'progress_indicators': []
+                    }
+                })
         
-        # Parse next actions and transition readiness
-        if 'next_actions' in raw_metadata:
-            try:
-                actions_data = json.loads(raw_metadata['next_actions']) if isinstance(raw_metadata['next_actions'], str) else raw_metadata['next_actions']
-                parsed['suggested_actions'] = actions_data.get('suggested_questions', [])
-                parsed['transition_ready'] = actions_data.get('transition_ready', False)
-                parsed['next_stage'] = actions_data.get('recommended_stage')
-            except (json.JSONDecodeError, TypeError):
-                logger.warning("Failed to parse next actions metadata")
-                parsed['suggested_actions'] = []
-                parsed['transition_ready'] = False
-        
-        # Parse AI state metadata for assumptions and confidence
+        # Parse AI state metadata (transparency and assumptions)
+        ai_state = {}
         if 'ai_state' in raw_metadata:
             try:
                 ai_data = json.loads(raw_metadata['ai_state']) if isinstance(raw_metadata['ai_state'], str) else raw_metadata['ai_state']
+                ai_state = ai_data
+                
+                parsed['ai_state'] = {
+                    'response_confidence': ai_data.get('response_confidence', 0.8),
+                    'assumptions_made': ai_data.get('assumptions_made', []),
+                    'assumption_confidence': ai_data.get('assumption_confidence', 0.0),
+                    'clarification_needed': ai_data.get('clarification_needed', False),
+                    'clarification_topics': ai_data.get('clarification_topics', []),
+                    'reasoning': ai_data.get('reasoning', ''),
+                    'alternative_approaches': ai_data.get('alternative_approaches', [])
+                }
+                
+                # Legacy fields for backward compatibility
                 parsed['ai_confidence'] = ai_data.get('response_confidence', 0.8)
                 parsed['assumptions_made'] = ai_data.get('assumptions_made', [])
                 parsed['clarification_needed'] = ai_data.get('clarification_needed', False)
+                
             except (json.JSONDecodeError, TypeError):
                 logger.warning("Failed to parse AI state metadata")
+                parsed['ai_state'] = {
+                    'response_confidence': 0.8,
+                    'assumptions_made': [],
+                    'clarification_needed': False
+                }
+        
+        # Parse next actions and recommendations
+        if 'next_actions' in raw_metadata:
+            try:
+                actions_data = json.loads(raw_metadata['next_actions']) if isinstance(raw_metadata['next_actions'], str) else raw_metadata['next_actions']
+                
+                parsed['next_actions'] = {
+                    'recommended_stage': actions_data.get('recommended_stage'),
+                    'transition_ready': actions_data.get('transition_ready', False),
+                    'client_actions': actions_data.get('client_actions', []),
+                    'estimated_completion': actions_data.get('estimated_completion'),
+                    'suggested_questions': actions_data.get('suggested_questions', []),
+                    'preparation_items': actions_data.get('preparation_items', []),
+                    'potential_blockers': actions_data.get('potential_blockers', [])
+                }
+                
+                # Legacy fields
+                parsed['suggested_actions'] = actions_data.get('suggested_questions', [])
+                parsed['transition_ready'] = actions_data.get('transition_ready', False)
+                parsed['next_stage'] = actions_data.get('recommended_stage')
+                
+            except (json.JSONDecodeError, TypeError):
+                logger.warning("Failed to parse next actions metadata")
+                parsed.update({
+                    'next_actions': {
+                        'transition_ready': False,
+                        'suggested_questions': [],
+                        'client_actions': []
+                    },
+                    'suggested_actions': [],
+                    'transition_ready': False
+                })
+        
+        # Add comprehensive metadata summary for debugging and monitoring
+        parsed['metadata_summary'] = {
+            'conversation_parsed': bool(conversation_data),
+            'quality_metrics_parsed': bool(quality_metrics),
+            'business_context_parsed': bool(business_context),
+            'ai_state_parsed': bool(ai_state),
+            'stage_completion_parsed': bool(stage_completion_data),
+            'total_fields_parsed': len([k for k in raw_metadata.keys() if k in ['conversation', 'quality_metrics', 'business_context', 'ai_state', 'stage_completion', 'next_actions']]),
+            'parsing_timestamp': timezone.now().isoformat()
+        }
         
         return parsed
     

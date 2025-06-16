@@ -766,6 +766,75 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         session.save()
         return Response({'status': 'archived'})
     
+    def destroy(self, request, *args, **kwargs):
+        """Delete a chat session with protection for submitted ideas"""
+        try:
+            session = self.get_object()
+            
+            # Check if idea has been submitted
+            if session.is_idea_submitted:
+                return Response(
+                    {'error': 'Cannot delete chat session with submitted idea'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Soft delete by updating status
+            session.status = 'deleted'
+            session.save()
+            
+            logger.info(f"User {request.user.username} deleted chat session {session.id}")
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            logger.error(f"Error deleting chat session: {str(e)}")
+            return Response(
+                {'error': 'Failed to delete session'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'])
+    def delete_all_sessions(self, request):
+        """Delete all chat sessions for the current user (excluding submitted ideas)"""
+        user = request.user
+        
+        # Get all active sessions for the user that don't have submitted ideas
+        sessions = ChatSession.objects.filter(
+            user=user, 
+            status='active',
+            is_idea_submitted=False  # Exclude submitted ideas
+        )
+        deleted_count = sessions.count()
+        
+        # Count protected sessions
+        protected_count = ChatSession.objects.filter(
+            user=user,
+            status='active',
+            is_idea_submitted=True
+        ).count()
+        
+        if deleted_count == 0 and protected_count == 0:
+            return Response({
+                'message': 'No active chat sessions found to delete',
+                'deleted_count': 0
+            })
+        
+        # Soft delete only non-submitted sessions
+        sessions.update(status='deleted')
+        
+        logger.info(f"User {user.username} deleted {deleted_count} chat sessions, {protected_count} protected")
+        
+        response_data = {
+            'message': f'Successfully deleted {deleted_count} chat session{"s" if deleted_count != 1 else ""}',
+            'deleted_count': deleted_count
+        }
+        
+        if protected_count > 0:
+            response_data['message'] += f'. {protected_count} submitted idea{"s" if protected_count != 1 else ""} protected.'
+            response_data['protected_count'] = protected_count
+        
+        return Response(response_data)
+    
     @action(detail=True, methods=['post'])
     def reset_session(self, request, pk=None):
         """
@@ -1118,6 +1187,16 @@ class ChatTemplateViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Filter templates by department and active status"""
+        # Auto-populate templates if none exist
+        if not ChatTemplate.objects.filter(is_active=True).exists():
+            try:
+                from apps.ideas.management.commands.populate_chat_templates import Command
+                command = Command()
+                command.handle()
+                logger.info("Auto-populated chat templates on first access")
+            except Exception as e:
+                logger.warning(f"Failed to auto-populate chat templates: {e}")
+        
         user = self.request.user
         queryset = ChatTemplate.objects.filter(is_active=True)
         

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Send, RefreshCw, Lightbulb, MoreVertical, Sparkles, HelpCircle, ChevronRight, MessageSquare, BarChart3, AlertTriangle, Bot, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ import {
   createChatSession,
   type ChatSessionDetail,
   type SendMessageRequest,
+  type ChatMessage,
 } from '@/services/chatApi';
 
 interface TemplateBadge {
@@ -64,6 +65,8 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
   const [showProgressPanel, setShowProgressPanel] = useState(false);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [optimisticMessage, setOptimisticMessage] = useState<ChatMessage | null>(null);
+  const [isAIThinking, setIsAIThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { checkHealth, resetMonitoring } = useConversationHealth();
@@ -154,12 +157,23 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
   const sendMessageMutation = useMutation({
     mutationFn: (data: SendMessageRequest) => sendMessage(session!.id, data),
     onSuccess: (response) => {
+      // Clear optimistic states
+      setOptimisticMessage(null);
+      setIsAIThinking(false);
+      
       queryClient.setQueryData(['chatSession', session!.id], response.session_updated);
       queryClient.invalidateQueries({ queryKey: ['chatSessions'] });
-      setMessage('');
-      scrollToBottom();
+      
+      // Scroll after data update
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
     },
     onError: (error: unknown) => {
+      // Clear optimistic states on error
+      setOptimisticMessage(null);
+      setIsAIThinking(false);
+      
       let errorMessage = "Failed to send message. Please try again.";
       let isTokenLimitError = false;
       
@@ -290,7 +304,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
     if (session) {
       resetMonitoring();
     }
-  }, [session?.id, resetMonitoring]);
+  }, [session, resetMonitoring]);
 
   // Handle intervention and progress panel display requests from health monitoring
   useEffect(() => {
@@ -348,8 +362,34 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
       // Send message to existing session
       if (sendMessageMutation.isPending || isTokenUsageHigh) return;
       
+      const userMessage = message.trim();
+      
+      // Create optimistic user message
+      const optimisticUserMessage: ChatMessage = {
+        id: `optimistic-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        role: 'user',
+        content: userMessage,
+        message_type: 'text',
+        sequence_number: session!.messages.length + 1,
+        created_at: new Date().toISOString(),
+        formatted_time: 'Just now',
+        is_processed: true,
+        processing_status: 'completed'
+      };
+      
+      // Show optimistic message and AI thinking immediately
+      setOptimisticMessage(optimisticUserMessage);
+      setMessage(''); // Clear input immediately
+      setIsAIThinking(true); // Show AI thinking indicator
+      
+      // Scroll to bottom after state updates
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+      
+      // Send actual message
       sendMessageMutation.mutate({
-        content: message.trim(),
+        content: userMessage,
         message_type: 'text',
       });
     }
@@ -399,6 +439,22 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
     const interviewMessage = "I have a business idea I want to develop comprehensively";
     startInterviewMutation.mutate(interviewMessage);
   };
+
+  // Combine session messages with optimistic message for display
+  const displayMessages = useMemo(() => {
+    if (!session) return [];
+    
+    const messages = optimisticMessage 
+      ? [...session.messages, optimisticMessage]
+      : session.messages;
+    
+    return messages;
+  }, [session, optimisticMessage]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [displayMessages, isAIThinking]);
 
   const isProcessing = sendMessageMutation.isPending || regenerateMutation.isPending || startInterviewMutation.isPending || isCreatingSession;
   const isInInterviewMode = session?.ai_metadata?.interview_mode;
@@ -569,7 +625,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => regenerateMutation.mutate()}
-                          disabled={session.messages.length === 0}
+                          disabled={displayMessages.length === 0}
                         >
                           Regenerate Last Response
                         </DropdownMenuItem>
@@ -668,7 +724,7 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
               // Existing chat messages
               <div className="h-full overflow-y-auto">
                 <div className="max-w-4xl mx-auto px-6 py-8">
-                  {session.messages.length === 0 ? (
+                  {displayMessages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-center">
                       <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                         <MessageSquare className="h-6 w-6 text-gray-400" />
@@ -680,12 +736,12 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      {session.messages.map((msg) => (
-                        <ChatMessage key={msg.id} message={msg} />
+                      {displayMessages.map((msg, index) => (
+                        <ChatMessage key={`${msg.id}-${index}`} message={msg} />
                       ))}
                     </div>
                   )}
-                  {isProcessing && (
+                  {(isProcessing || isAIThinking) && (
                     <div className="flex items-center gap-3 mt-6 mb-2">
                       <div className="chat-avatar chat-avatar-ai">
                         <Bot size={16} />
@@ -697,7 +753,9 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
                             ? 'Starting interview mode...' 
                             : isCreatingSession
                             ? 'Starting conversation...'
-                            : 'AI is thinking...'
+                            : isAIThinking
+                            ? 'AI is thinking...'
+                            : 'Processing...'
                           }
                         </span>
                       </div>
@@ -744,13 +802,13 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
                       : "Message AI Assistant..."
                   }
                   className="chat-input min-h-[52px] w-full pr-12 resize-none border-0 bg-transparent p-0 text-gray-900 placeholder:text-gray-500 focus:ring-0"
-                  disabled={isProcessing || isTokenUsageHigh}
+                  disabled={isProcessing || isTokenUsageHigh || isAIThinking}
                   rows={1}
                 />
                 <button
                   className="chat-send-button absolute bottom-3 right-3"
                   onClick={handleSend}
-                  disabled={!message.trim() || isProcessing || isTokenUsageHigh}
+                  disabled={!message.trim() || isProcessing || isTokenUsageHigh || isAIThinking}
                 >
                   <Send size={16} />
                 </button>
@@ -759,12 +817,16 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({ sess
                 <span>Press Enter to send, Shift+Enter for new line</span>
                 <div className="flex items-center gap-4">
                   <span>
-                    {isProcessing 
-                      ? (isCreatingSession ? 'Starting...' : 'Processing...') 
+                    {isProcessing || isAIThinking
+                      ? (isCreatingSession 
+                          ? 'Starting...' 
+                          : isAIThinking 
+                          ? 'Thinking...' 
+                          : 'Processing...') 
                       : 'Ready'
                     }
                   </span>
-                  {!isEmptyChat && !isProcessing && (
+                  {!isEmptyChat && !isProcessing && !isAIThinking && (
                     <button
                       onClick={() => setShowHelpModal(true)}
                       className="text-blue-600 hover:text-blue-800 hover:underline"

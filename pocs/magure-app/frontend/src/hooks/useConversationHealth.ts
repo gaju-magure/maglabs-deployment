@@ -1,10 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { ChatSessionDetail } from '@/services/chatApi';
 import { toast } from '@/hooks/use-toast';
 
 export interface ConversationHealthMonitor {
-  checkHealth: (session: ChatSessionDetail) => void;
+  checkHealth: (session: ChatSessionDetail, skipMomentumWarning?: boolean) => void;
   resetMonitoring: () => void;
+  shouldShowMomentumWarning: (momentum: number, messageCount: number, timeSinceLastWarning: number) => boolean;
+  markMomentumWarningShown: () => void;
 }
 
 export const useConversationHealth = (): ConversationHealthMonitor => {
@@ -13,8 +15,9 @@ export const useConversationHealth = (): ConversationHealthMonitor => {
   const lastStageProgress = useRef<number>(0);
   const progressStagnationTime = useRef<number | null>(null);
   const notificationShown = useRef<Set<string>>(new Set());
+  const lastMomentumWarningTime = useRef<number>(0);
 
-  const checkHealth = (session: ChatSessionDetail) => {
+  const checkHealth = useCallback((session: ChatSessionDetail, skipMomentumWarning: boolean = false) => {
     if (!session) return;
 
     const currentHealth = session.conversation_health || 'good';
@@ -90,14 +93,26 @@ export const useConversationHealth = (): ConversationHealthMonitor => {
       lastStageProgress.current = currentProgress;
     }
 
-    // Low momentum alert
-    if (momentum < 0.2 && velocity < 0.05 && !notificationShown.current.has('low_momentum')) {
+    // Low momentum alert (only if not skipped and not shown recently)
+    if (!skipMomentumWarning && 
+        momentum < 0.2 && 
+        velocity < 0.05 && 
+        session.messages.length > 3 &&
+        !notificationShown.current.has('low_momentum') &&
+        Date.now() - lastMomentumWarningTime.current > 30000) { // 30 seconds minimum between warnings
+      
       toast({
         title: "Low Conversation Momentum",
         description: "The conversation momentum is low. Consider asking more specific questions or providing more details.",
         variant: "default",
       });
       notificationShown.current.add('low_momentum');
+      lastMomentumWarningTime.current = Date.now();
+      
+      // Clear the notification flag after 30 seconds so it can show again if needed
+      setTimeout(() => {
+        notificationShown.current.delete('low_momentum');
+      }, 30000);
     }
 
     // Transition ready notification
@@ -124,15 +139,33 @@ export const useConversationHealth = (): ConversationHealthMonitor => {
       });
       notificationShown.current.add('high_priority_intervention');
     }
-  };
+  }, []);
 
-  const resetMonitoring = () => {
+  const shouldShowMomentumWarning = useCallback((momentum: number, messageCount: number, timeSinceLastWarning: number): boolean => {
+    return momentum !== undefined &&
+           momentum < 0.3 &&
+           messageCount > 3 &&
+           timeSinceLastWarning > 30000;
+  }, []);
+
+  const markMomentumWarningShown = useCallback(() => {
+    lastMomentumWarningTime.current = Date.now();
+    notificationShown.current.add('low_momentum');
+    
+    // Clear the notification flag after 30 seconds
+    setTimeout(() => {
+      notificationShown.current.delete('low_momentum');
+    }, 30000);
+  }, []);
+
+  const resetMonitoring = useCallback(() => {
     lastHealthCheck.current = 'good';
     stagnationStartTime.current = null;
     lastStageProgress.current = 0;
     progressStagnationTime.current = null;
+    lastMomentumWarningTime.current = 0;
     notificationShown.current.clear();
-  };
+  }, []);
 
   // Listen for custom events to handle intervention display
   useEffect(() => {
@@ -157,6 +190,8 @@ export const useConversationHealth = (): ConversationHealthMonitor => {
 
   return {
     checkHealth,
-    resetMonitoring
+    resetMonitoring,
+    shouldShowMomentumWarning,
+    markMomentumWarningShown
   };
 };

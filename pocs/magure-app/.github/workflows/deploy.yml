@@ -1,0 +1,50 @@
+name: Deploy MagLabs to EC2
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      ec2_ip:
+        description: 'EC2 IP Address'
+        required: false
+        default: '3.108.58.153'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/magure-app-key.pem
+        chmod 600 ~/.ssh/magure-app-key.pem
+        ssh-keyscan -H ${{ github.event.inputs.ec2_ip || '3.108.58.153' }} >> ~/.ssh/known_hosts
+    
+    - name: Deploy to EC2
+      env:
+        EC2_IP: ${{ github.event.inputs.ec2_ip || '3.108.58.153' }}
+      run: |
+        # Install dependencies
+        sudo apt-get update
+        sudo apt-get install -y rsync
+        
+        # Run deployment script
+        ./deploy.sh ec2
+    
+    - name: Verify deployment
+      env:
+        EC2_IP: ${{ github.event.inputs.ec2_ip || '3.108.58.153' }}
+      run: |
+        # Wait for services to start
+        sleep 30
+        
+        # Test endpoints
+        curl -f http://$EC2_IP/health || echo "⚠️ Health check failed"
+        curl -f http://admin.$EC2_IP/admin/ || echo "⚠️ Admin interface not accessible"
+        
+        echo "✅ Deployment verification completed"

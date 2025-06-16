@@ -6,17 +6,17 @@ services:
     image: postgres:15-alpine
     container_name: maglabs_postgres
     environment:
-      POSTGRES_DB: ${DB_NAME:-maglabs}
-      POSTGRES_USER: ${DB_USER:-maglabs}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-maglabs123}
+      POSTGRES_DB: ${POSTGRES_DB:-maglabs}
+      POSTGRES_USER: ${POSTGRES_USER:-maglabs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-maglabs123}
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-maglabs}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-maglabs}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,19 +29,19 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: development
+      target: ${TARGET:-development}
     container_name: maglabs_backend
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.development
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=${DB_NAME:-maglabs}
-      - DB_USER=${DB_USER:-maglabs}
-      - DB_PASSWORD=${DB_PASSWORD:-maglabs123}
-      - DEBUG=true
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.dev}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-maglabs}
+      - POSTGRES_USER=${POSTGRES_USER:-maglabs}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-maglabs123}
+      - DEBUG=${DEBUG:-true}
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - ALLOWED_HOSTS=localhost,127.0.0.1,backend,*.maglabs.local,*.maglabs.api
-      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://frontend:3000,http://*.maglabs.local
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://frontend:3000}
       - MAGLABS_API_URL=${MAGLABS_API_URL:-http://localhost:8001}
       - MAGLABS_API_KEY=${MAGLABS_API_KEY:-dev-api-key}
     volumes:

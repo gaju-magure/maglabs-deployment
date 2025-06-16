@@ -58,18 +58,18 @@ COPY . .
 # Create directories for logs and static files
 RUN mkdir -p /app/logs /app/staticfiles /app/mediafiles
 
+# Copy entrypoint script (before switching user)
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Change ownership to django user
 RUN chown -R django:django /app
 
 # Switch to django user
 USER django
 
-# Collect static files
-RUN python manage.py collectstatic --noinput --settings=config.settings.production
-
-# Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Collect static files (this will be done in entrypoint for production)
+# RUN python manage.py collectstatic --noinput --settings=config.settings.production
 
 # Expose port
 EXPOSE 8000

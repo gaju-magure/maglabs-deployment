@@ -5,6 +5,7 @@ from django.utils.text import slugify
 
 from .models import Tenant, Domain
 from .onboarding_models import OnboardingProgress
+from .branding_models import TenantBranding, DefaultThemeTemplate, TenantAsset, OnboardingBrandingChoices
 
 User = get_user_model()
 
@@ -117,13 +118,118 @@ class TenantInfoSerializer(serializers.ModelSerializer):
             if obj.onboarding_status == Tenant.OnboardingStatus.COMPLETED:
                 completion_percentage = 100
             else:
-                completion_percentage = progress.get_effective_completion_percentage()
+                completed_count = len([step for step in progress.completed_steps if step != 'COMPLETE'])
+                completion_percentage = (completed_count / progress.total_steps) * 100 if progress.total_steps > 0 else 0
             
             return {
                 'completion_percentage': completion_percentage,
                 'completed_steps': len(progress.completed_steps),
-                'total_steps': progress.get_effective_total_steps(),
+                'total_steps': progress.total_steps,
                 'current_step': progress.current_step
             }
         except OnboardingProgress.DoesNotExist:
             return None
+
+
+class DefaultThemeTemplateSerializer(serializers.ModelSerializer):
+    """Serializer for theme templates"""
+    
+    class Meta:
+        model = DefaultThemeTemplate
+        fields = [
+            'template_id', 'template_name', 'template_slug', 
+            'template_category', 'template_description', 'target_industries',
+            'preview_image_url', 'popularity_score', 'is_active', 'is_default',
+            'theme_configuration', 'created_at'
+        ]
+        read_only_fields = ['template_id', 'popularity_score', 'created_at']
+
+
+class TenantAssetSerializer(serializers.ModelSerializer):
+    """Serializer for tenant assets"""
+    
+    class Meta:
+        model = TenantAsset
+        fields = [
+            'asset_id', 'asset_type', 'asset_category', 'file_path',
+            'file_size_bytes', 'mime_type', 'dimensions', 'alt_text',
+            'usage_context', 'optimization_variants', 'cdn_urls', 'created_at'
+        ]
+        read_only_fields = ['asset_id', 'file_size_bytes', 'mime_type', 'dimensions', 'created_at']
+
+
+class TenantBrandingSerializer(serializers.ModelSerializer):
+    """Serializer for tenant branding configuration"""
+    assets = TenantAssetSerializer(many=True, read_only=True)
+    template_source = DefaultThemeTemplateSerializer(read_only=True)
+    
+    class Meta:
+        model = TenantBranding
+        fields = [
+            'branding_id', 'template_source', 'template_version', 'auto_update_from_template',
+            'customization_level', 'setup_source', 'is_onboarding_generated', 'can_be_customized',
+            'primary_colors', 'secondary_colors', 'accent_colors', 'neutral_palette',
+            'font_config', 'font_sizes', 'spacing_scale', 'border_radius',
+            'component_overrides', 'custom_css', 'version_number',
+            'assets', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['branding_id', 'version_number', 'created_at', 'updated_at']
+    
+    def update(self, instance, validated_data):
+        """Update branding and increment version for cache invalidation"""
+        updated_instance = super().update(instance, validated_data)
+        updated_instance.increment_version()
+        return updated_instance
+
+
+class TenantBrandingCreateUpdateSerializer(serializers.ModelSerializer):
+    """Simplified serializer for creating/updating branding without nested data"""
+    template_id = serializers.UUIDField(required=False, allow_null=True)
+    
+    class Meta:
+        model = TenantBranding
+        fields = [
+            'template_id', 'auto_update_from_template', 'customization_level',
+            'primary_colors', 'secondary_colors', 'accent_colors', 'neutral_palette',
+            'font_config', 'font_sizes', 'spacing_scale', 'border_radius',
+            'component_overrides', 'custom_css'
+        ]
+    
+    def create(self, validated_data):
+        template_id = validated_data.pop('template_id', None)
+        tenant = self.context['tenant']
+        
+        branding = TenantBranding.objects.create(
+            tenant=tenant,
+            setup_source='admin_panel',
+            **validated_data
+        )
+        
+        # Apply template if provided
+        if template_id:
+            try:
+                template = DefaultThemeTemplate.objects.get(template_id=template_id, is_active=True)
+                branding.apply_template(template)
+            except DefaultThemeTemplate.DoesNotExist:
+                pass
+        
+        return branding
+    
+    def update(self, instance, validated_data):
+        template_id = validated_data.pop('template_id', None)
+        
+        # Apply template if provided
+        if template_id:
+            try:
+                template = DefaultThemeTemplate.objects.get(template_id=template_id, is_active=True)
+                instance.apply_template(template)
+            except DefaultThemeTemplate.DoesNotExist:
+                pass
+        
+        # Update other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        instance.increment_version()
+        return instance

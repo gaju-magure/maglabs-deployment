@@ -2,8 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ChatLayout } from '@/components/chat/ChatLayout';
-import { ChatInterface } from '@/components/chat/ChatInterface';
-import { EmptyChat } from '@/components/chat/EmptyChat';
+import { UnifiedChatInterface } from '@/components/chat/UnifiedChatInterface';
 import { getChatSession } from '@/services/chatApi';
 
 export const ChatPage: React.FC = () => {
@@ -35,11 +34,10 @@ export const ChatPage: React.FC = () => {
   
   return (
     <ChatLayout>
-      {sessionId && session ? (
-        <ChatInterface session={session} />
-      ) : (
-        <EmptyChat onNewChat={(id) => navigate(`/dashboard/chat/${id}`)} />
-      )}
+      <UnifiedChatInterface 
+        session={sessionId && session ? session : undefined}
+        onNewChat={(id) => navigate(`/dashboard/chat/${id}`)} 
+      />
     </ChatLayout>
   );
 };

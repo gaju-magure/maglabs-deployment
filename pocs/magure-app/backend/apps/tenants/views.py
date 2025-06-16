@@ -11,6 +11,8 @@ from django.shortcuts import get_object_or_404
 from .models import Tenant
 from .serializers import (
     TenantCreateSerializer, TenantInfoSerializer,
+    TenantBrandingSerializer, TenantBrandingCreateUpdateSerializer,
+    DefaultThemeTemplateSerializer, TenantAssetSerializer
 )
 from .onboarding_serializers import (
     OnboardingTokenSerializer,
@@ -19,6 +21,7 @@ from .onboarding_serializers import (
     OnboardingStepSerializer
 )
 from .onboarding_models import TenantProfile, AdminProfile, WorkspacePreferences, OnboardingProgress
+from .branding_models import TenantBranding, DefaultThemeTemplate, TenantAsset
 from config.domain_config import get_frontend_url, get_dashboard_url
 from django.utils import timezone
 from services.email_service import EmailService
@@ -650,3 +653,198 @@ class OnboardingStepManagementView(APIView):
             return Response({
                 'error': 'Onboarding progress not found'
             }, status=status.HTTP_404_NOT_FOUND)
+
+
+class TenantBrandingViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing tenant branding"""
+    permission_classes = [IsAuthenticated, IsTenantAdmin]
+    
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return TenantBrandingCreateUpdateSerializer
+        return TenantBrandingSerializer
+    
+    def get_queryset(self):
+        # Only return branding for current tenant
+        return TenantBranding.objects.filter(tenant=self.request.tenant)
+    
+    def get_object(self):
+        # Get or create branding for current tenant
+        branding, created = TenantBranding.objects.get_or_create(
+            tenant=self.request.tenant,
+            defaults={
+                'setup_source': 'admin_panel',
+                'customization_level': 'basic'
+            }
+        )
+        return branding
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['tenant'] = self.request.tenant
+        return context
+    
+    def list(self, request, *args, **kwargs):
+        """Get current tenant's branding configuration"""
+        branding = self.get_object()
+        serializer = self.get_serializer(branding)
+        return Response(serializer.data)
+    
+    def create(self, request, *args, **kwargs):
+        """Create or update tenant branding"""
+        branding = self.get_object()
+        serializer = self.get_serializer(branding, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        response_serializer = TenantBrandingSerializer(branding)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+    
+    def update(self, request, *args, **kwargs):
+        """Update tenant branding"""
+        return self.create(request, *args, **kwargs)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Partially update tenant branding"""
+        return self.create(request, *args, **kwargs)
+    
+    @action(detail=False, methods=['post'])
+    def apply_template(self, request):
+        """Apply a theme template to tenant branding"""
+        template_id = request.data.get('template_id')
+        if not template_id:
+            return Response(
+                {'error': 'template_id is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            template = DefaultThemeTemplate.objects.get(
+                template_id=template_id, 
+                is_active=True
+            )
+        except DefaultThemeTemplate.DoesNotExist:
+            return Response(
+                {'error': 'Template not found or inactive'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        branding = self.get_object()
+        branding.apply_template(template)
+        
+        serializer = TenantBrandingSerializer(branding)
+        return Response({
+            'message': f'Template "{template.template_name}" applied successfully',
+            'branding': serializer.data
+        })
+    
+    @action(detail=False, methods=['post'])
+    def reset_to_default(self, request):
+        """Reset branding to default template"""
+        default_template = DefaultThemeTemplate.get_default_template()
+        if not default_template:
+            return Response(
+                {'error': 'No default template available'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        branding = self.get_object()
+        branding.apply_template(default_template)
+        
+        serializer = TenantBrandingSerializer(branding)
+        return Response({
+            'message': 'Branding reset to default template',
+            'branding': serializer.data
+        })
+
+
+class DefaultThemeTemplateViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for browsing available theme templates"""
+    serializer_class = DefaultThemeTemplateSerializer
+    permission_classes = [IsAuthenticated, IsTenantAdmin]
+    
+    def get_queryset(self):
+        return DefaultThemeTemplate.objects.filter(is_active=True).order_by(
+            '-popularity_score', 'template_name'
+        )
+    
+    @action(detail=False, methods=['get'])
+    def categories(self, request):
+        """Get available template categories"""
+        categories = DefaultThemeTemplate.objects.filter(
+            is_active=True
+        ).values_list('template_category', flat=True).distinct()
+        
+        return Response({
+            'categories': list(categories)
+        })
+    
+    @action(detail=False, methods=['get'])
+    def industries(self, request):
+        """Get available target industries"""
+        # Get all unique industries from target_industries JSON arrays
+        templates = DefaultThemeTemplate.objects.filter(is_active=True)
+        industries = set()
+        
+        for template in templates:
+            if template.target_industries:
+                industries.update(template.target_industries)
+        
+        return Response({
+            'industries': sorted(list(industries))
+        })
+    
+    @action(detail=False, methods=['get'])
+    def recommendations(self, request):
+        """Get template recommendations based on tenant profile"""
+        # Try to get tenant's industry from company profile
+        try:
+            tenant_profile = self.request.tenant.profile
+            company_details = tenant_profile.business_type or 'general'
+            
+            recommended_templates = DefaultThemeTemplate.get_recommendations_for_industry(
+                company_details.lower()
+            )
+            
+            serializer = self.get_serializer(recommended_templates, many=True)
+            return Response({
+                'recommendations': serializer.data,
+                'based_on': company_details
+            })
+            
+        except Exception:
+            # Fallback to popular templates
+            popular_templates = self.get_queryset()[:3]
+            serializer = self.get_serializer(popular_templates, many=True)
+            return Response({
+                'recommendations': serializer.data,
+                'based_on': 'popularity'
+            })
+
+
+class TenantAssetViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing tenant assets (logos, images)"""
+    serializer_class = TenantAssetSerializer
+    permission_classes = [IsAuthenticated, IsTenantAdmin]
+    
+    def get_queryset(self):
+        # Get branding for current tenant
+        try:
+            branding = TenantBranding.objects.get(tenant=self.request.tenant)
+            return TenantAsset.objects.filter(tenant_branding=branding)
+        except TenantBranding.DoesNotExist:
+            return TenantAsset.objects.none()
+    
+    def perform_create(self, serializer):
+        # Ensure asset is associated with current tenant's branding
+        branding, created = TenantBranding.objects.get_or_create(
+            tenant=self.request.tenant,
+            defaults={
+                'setup_source': 'admin_panel',
+                'customization_level': 'basic'
+            }
+        )
+        serializer.save(
+            tenant_branding=branding,
+            uploaded_by=self.request.user
+        )

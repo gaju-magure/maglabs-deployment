@@ -23,33 +23,40 @@ class DomainConfig:
             'dev': {
                 'api_domain': 'maglabs.api',
                 'user_domain': 'maglabs.local',
+                'ai_domain': 'ai.maglabs.local',
                 'frontend_port': None,
                 'api_port': None,
                 'protocol': 'http',
                 'cors_origins': [
                     'http://localhost:3000',
                     'http://127.0.0.1:3000',
-                    'http://*.maglabs.local:3000'
+                    'http://localhost:8080',
+                    'http://127.0.0.1:8080',
+                    'http://*.maglabs.local'
                 ]
             },
             'prod': {
-                'api_domain': 'maglabs.api',
-                'user_domain': 'maglabs.com',
+                'api_domain': os.environ.get('PROD_API_DOMAIN', 'yourdomain-api.com'),
+                'user_domain': os.environ.get('PROD_USER_DOMAIN', 'yourdomain.com'),
+                'ai_domain': os.environ.get('PROD_AI_DOMAIN', 'ai-api.yourdomain.com'),
                 'frontend_port': None,
                 'api_port': None,
                 'protocol': 'https',
                 'cors_origins': [
-                    'https://*.maglabs.com'
+                    f"https://*.{os.environ.get('PROD_USER_DOMAIN', 'yourdomain.com')}",
+                    f"https://{os.environ.get('PROD_USER_DOMAIN', 'yourdomain.com')}"
                 ]
             },
             'staging': {
-                'api_domain': 'maglabs.api',
-                'user_domain': 'staging.maglabs.com',
+                'api_domain': os.environ.get('STAGING_API_DOMAIN', 'staging-api.yourdomain.com'),
+                'user_domain': os.environ.get('STAGING_USER_DOMAIN', 'staging.yourdomain.com'),
+                'ai_domain': os.environ.get('STAGING_AI_DOMAIN', 'ai-api.staging.yourdomain.com'),
                 'frontend_port': None,
                 'api_port': None,
                 'protocol': 'https',
                 'cors_origins': [
-                    'https://*.staging.maglabs.com'
+                    f"https://*.{os.environ.get('STAGING_USER_DOMAIN', 'staging.yourdomain.com')}",
+                    f"https://{os.environ.get('STAGING_USER_DOMAIN', 'staging.yourdomain.com')}"
                 ]
             }
         }
@@ -76,6 +83,11 @@ class DomainConfig:
         if tenant_schema:
             return f"{tenant_schema}.{base_domain}"
         return base_domain
+    
+    def get_ai_domain(self):
+        """Get AI service domain"""
+        config = self.current_config
+        return config.get('ai_domain', 'ai-api.yourdomain.com')
     
     def get_frontend_url(self, tenant_schema, path=''):
         """Generate frontend URL for user access"""

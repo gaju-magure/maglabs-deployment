@@ -261,7 +261,6 @@ class OnboardingProgress(models.Model):
         ('EMAIL_INVITATION', 'Email Invitation'),
         ('PROFILE_SETUP', 'Profile Setup'),
         ('COMPANY_DETAILS', 'Company Details'),
-        ('BRANDING_SETUP', 'Branding Setup'),
         ('PREFERENCES', 'Preferences'),
         ('COMPLETE', 'Complete'),
     ]
@@ -291,26 +290,8 @@ class OnboardingProgress(models.Model):
     
     # Progress Metrics
     completion_percentage = models.PositiveIntegerField(default=0)
-    total_steps = models.PositiveIntegerField(default=4)  # Actual onboarding steps (excluding COMPLETE and optional BRANDING_SETUP)
+    total_steps = models.PositiveIntegerField(default=4)  # Actual onboarding steps (excluding COMPLETE)
     
-    # Branding Step Tracking
-    branding_step_available = models.BooleanField(
-        default=True,
-        help_text="Whether branding step is available for this tenant"
-    )
-    branding_step_completed = models.BooleanField(
-        default=False,
-        help_text="Whether branding step was completed"
-    )
-    branding_step_skipped = models.BooleanField(
-        default=False,
-        help_text="Whether user chose to skip branding setup"
-    )
-    branding_completed_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="When branding step was completed"
-    )
     
     # Timing Information
     started_at = models.DateTimeField(auto_now_add=True)
@@ -330,10 +311,9 @@ class OnboardingProgress(models.Model):
         if step_data:
             self.step_data[step_name] = step_data
         
-        # Update completion percentage based on effective total steps (excluding COMPLETE)
-        effective_total = self.get_effective_total_steps()
+        # Update completion percentage based on total steps (excluding COMPLETE)
         completed_count = len([step for step in self.completed_steps if step != 'COMPLETE'])
-        self.completion_percentage = min(100, (completed_count / effective_total) * 100)
+        self.completion_percentage = min(100, (completed_count / self.total_steps) * 100)
         
         # Set current step to next incomplete step
         for step_code, step_name_display in self.STEPS:
@@ -367,45 +347,6 @@ class OnboardingProgress(models.Model):
         return (step_name in self.completed_steps or 
                 step_name == self.current_step)
     
-    def mark_branding_step_completed(self, branding_data=None):
-        """Mark branding step as completed with optional data"""
-        from django.utils import timezone
-        
-        self.branding_step_completed = True
-        self.branding_completed_at = timezone.now()
-        
-        if branding_data:
-            self.step_data['BRANDING_SETUP'] = branding_data
-        
-        # Mark the step as completed in the general system
-        self.mark_step_completed('BRANDING_SETUP', branding_data)
-    
-    def skip_branding_step(self):
-        """Mark branding step as skipped"""
-        self.branding_step_skipped = True
-        self.branding_step_completed = False
-        
-        # Move to next step without marking branding as completed
-        self.current_step = 'PREFERENCES'
-        self.save()
-    
-    def get_effective_total_steps(self):
-        """Get total steps including branding if not skipped"""
-        base_steps = self.total_steps
-        if self.branding_step_available and not self.branding_step_skipped:
-            return base_steps + 1
-        return base_steps
-    
-    def get_effective_completion_percentage(self):
-        """Get completion percentage accounting for branding step"""
-        total_steps = self.get_effective_total_steps()
-        completed_count = len(self.completed_steps)
-        
-        # Don't count COMPLETE step in completion percentage
-        if 'COMPLETE' in self.completed_steps:
-            completed_count -= 1
-            
-        return (completed_count / total_steps) * 100 if total_steps > 0 else 0
     
     class Meta:
         db_table = 'onboarding_progress'

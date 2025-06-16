@@ -1,0 +1,335 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [main, develop, staging]
+    paths:
+      - 'pocs/magure-app/backend/**'
+      - 'pocs/magure-app/docker-compose*.yml'
+      - '.github/workflows/backend-ci-cd.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'pocs/magure-app/backend/**'
+      - '.github/workflows/backend-ci-cd.yml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: maglabs/backend
+
+jobs:
+  # Test and Lint Job
+  test-and-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./pocs/magure-app/backend
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: test_maglabs
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: pocs/magure-app/backend/requirements*.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run linting with flake8
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Run type checking with mypy
+        run: mypy . --ignore-missing-imports
+
+      - name: Run security checks with bandit
+        run: bandit -r . -f json -o bandit-report.json || true
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report-${{ github.sha }}
+          path: pocs/magure-app/backend/bandit-report.json
+
+      - name: Setup test environment
+        run: |
+          cp .env.example .env
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_maglabs
+          REDIS_URL: redis://localhost:6379/0
+
+      - name: Run database migrations
+        run: |
+          python manage.py migrate_schemas --shared
+          python manage.py migrate_schemas
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_maglabs
+          REDIS_URL: redis://localhost:6379/0
+
+      - name: Run tests with coverage
+        run: |
+          coverage run --source='.' manage.py test
+          coverage xml
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_maglabs
+          REDIS_URL: redis://localhost:6379/0
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./pocs/magure-app/backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+
+  # Security and Dependency Scan
+  security-scan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./pocs/magure-app/backend
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install safety
+
+      - name: Run safety check
+        run: safety check --json --output safety-report.json || true
+
+      - name: Upload safety report
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-report-${{ github.sha }}
+          path: pocs/magure-app/backend/safety-report.json
+
+  # Docker Build and Push
+  docker-build:
+    needs: [test-and-lint, security-scan]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./pocs/magure-app/backend
+          file: ./pocs/magure-app/backend/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Database Migration Check
+  migration-check:
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./pocs/magure-app/backend
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: migration_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check for migration conflicts
+        run: |
+          python manage.py makemigrations --check --dry-run
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/migration_test
+
+      - name: Test migrations
+        run: |
+          python manage.py migrate_schemas --shared
+          python manage.py migrate_schemas
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/migration_test
+
+  # Deploy to Development
+  deploy-development:
+    needs: [docker-build, migration-check]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: development
+    
+    steps:
+      - name: Deploy to Development
+        run: |
+          echo "Deploying backend to development environment"
+          # Add your development deployment commands here
+          # Example: kubectl set image deployment/backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop-${{ github.sha }}
+
+      - name: Run database migrations
+        run: |
+          echo "Running database migrations in development"
+          # Add migration commands for development
+          # Example: kubectl exec deployment/backend -- python manage.py migrate_schemas
+
+  # Deploy to Staging
+  deploy-staging:
+    needs: [docker-build, migration-check]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/staging'
+    environment: staging
+    
+    steps:
+      - name: Deploy to Staging
+        run: |
+          echo "Deploying backend to staging environment"
+          # Add your staging deployment commands here
+
+      - name: Run database migrations
+        run: |
+          echo "Running database migrations in staging"
+          # Add migration commands for staging
+
+      - name: Run health check
+        run: |
+          echo "Running health check on staging"
+          # Add health check commands
+
+  # Deploy to Production
+  deploy-production:
+    needs: [docker-build, migration-check]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Create deployment backup
+        run: |
+          echo "Creating backup before production deployment"
+          # Add backup commands
+
+      - name: Deploy to Production
+        run: |
+          echo "Deploying backend to production environment"
+          # Add your production deployment commands here
+
+      - name: Run database migrations
+        run: |
+          echo "Running database migrations in production"
+          # Add migration commands for production
+
+      - name: Run health check
+        run: |
+          echo "Running health check on production"
+          # Add health check commands
+
+      - name: Notify deployment
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+  # Performance Test (Production only)
+  performance-test:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Run performance tests
+        run: |
+          echo "Running performance tests"
+          # Add performance testing commands
+          # Example: artillery run performance-test.yml

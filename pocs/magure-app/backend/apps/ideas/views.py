@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models import Q, Count, Max
 from django.utils import timezone
 from .models import Idea, IdeaLike, ChatSession, ChatMessage, ChatTemplate
+from utils.auth_utils import get_jwt_token_from_request
 from .serializers import (
     IdeaListSerializer,
     IdeaDetailSerializer,
@@ -309,10 +310,28 @@ class IdeaRefineAPIView(APIView):
         
         # Use MagLabs service for idea refinement
         try:
-            service = MagLabsService()
+            # Extract JWT token from request for authentication forwarding
+            auth_token = get_jwt_token_from_request(request)
+            service = MagLabsService(auth_token=auth_token)
             messages = [{"role": "user", "content": f"Please help me refine this idea: {idea_text}"}]
-            result = service.send_message(messages)
+            result = service.send_message(messages, auth_token=auth_token)
             return Response({"refined_idea": result['content']})
+        except ConnectionError as e:
+            error_str = str(e).lower()
+            if 'authentication failed' in error_str or 'invalid or expired jwt token' in error_str:
+                return Response({
+                    'error': 'Authentication failed. Please log in again.',
+                    'error_type': 'authentication_error',
+                    'requires_login': True
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            elif 'access denied' in error_str or 'insufficient permissions' in error_str:
+                return Response({
+                    'error': 'You don\'t have permission to access the AI service.',
+                    'error_type': 'authorization_error'
+                }, status=status.HTTP_403_FORBIDDEN)
+            else:
+                logger.error(f"Connection error refining idea: {e}")
+                return Response({"error": "AI service unavailable. Please try again later."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except Exception as e:
             logger.error(f"Error refining idea: {e}")
             return Response({"error": "Failed to refine idea"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -438,7 +457,9 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         
         # Get AI response
         try:
-            ai_service = MagLabsService()
+            # Extract JWT token from request for authentication forwarding
+            auth_token = get_jwt_token_from_request(request)
+            ai_service = MagLabsService(auth_token=auth_token)
             
             # Build conversation history
             conversation_history = self._build_conversation_history(session)
@@ -456,7 +477,8 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
                 session_id=session.maglabs_session_id,
                 conversation_config=ai_service._get_conversation_config(
                     session.template
-                )
+                ),
+                auth_token=auth_token
             )
             
             # Validate AI response
@@ -518,9 +540,22 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         except ConnectionError as e:
             logger.error(f"Connection error to AI service for session {session.id}: {str(e)}")
             
-            # Check if this is a token limit or session reset scenario
+            # Check if this is an authentication error
             error_str = str(e).lower()
-            if 'token limit' in error_str or 'session' in error_str:
+            if 'authentication failed' in error_str or 'invalid or expired jwt token' in error_str:
+                # Authentication error - user needs to re-login
+                return Response({
+                    'error': 'Authentication failed. Please log in again.',
+                    'error_type': 'authentication_error',
+                    'requires_login': True
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            elif 'access denied' in error_str or 'insufficient permissions' in error_str:
+                # Authorization error - user doesn't have permission
+                return Response({
+                    'error': 'You don\'t have permission to access the AI service.',
+                    'error_type': 'authorization_error'
+                }, status=status.HTTP_403_FORBIDDEN)
+            elif 'token limit' in error_str or 'session' in error_str:
                 try:
                     # Attempt session reset by creating new unique context
                     import uuid
@@ -540,7 +575,8 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
                         session_id=None,  # Force new session
                         conversation_config=ai_service._get_conversation_config(
                             session.template
-                        )
+                        ),
+                        auth_token=auth_token
                     )
                     
                     # Create successful AI message
@@ -730,6 +766,75 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         session.save()
         return Response({'status': 'archived'})
     
+    def destroy(self, request, *args, **kwargs):
+        """Delete a chat session with protection for submitted ideas"""
+        try:
+            session = self.get_object()
+            
+            # Check if idea has been submitted
+            if session.is_idea_submitted:
+                return Response(
+                    {'error': 'Cannot delete chat session with submitted idea'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Soft delete by updating status
+            session.status = 'deleted'
+            session.save()
+            
+            logger.info(f"User {request.user.username} deleted chat session {session.id}")
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            logger.error(f"Error deleting chat session: {str(e)}")
+            return Response(
+                {'error': 'Failed to delete session'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'])
+    def delete_all_sessions(self, request):
+        """Delete all chat sessions for the current user (excluding submitted ideas)"""
+        user = request.user
+        
+        # Get all active sessions for the user that don't have submitted ideas
+        sessions = ChatSession.objects.filter(
+            user=user, 
+            status='active',
+            is_idea_submitted=False  # Exclude submitted ideas
+        )
+        deleted_count = sessions.count()
+        
+        # Count protected sessions
+        protected_count = ChatSession.objects.filter(
+            user=user,
+            status='active',
+            is_idea_submitted=True
+        ).count()
+        
+        if deleted_count == 0 and protected_count == 0:
+            return Response({
+                'message': 'No active chat sessions found to delete',
+                'deleted_count': 0
+            })
+        
+        # Soft delete only non-submitted sessions
+        sessions.update(status='deleted')
+        
+        logger.info(f"User {user.username} deleted {deleted_count} chat sessions, {protected_count} protected")
+        
+        response_data = {
+            'message': f'Successfully deleted {deleted_count} chat session{"s" if deleted_count != 1 else ""}',
+            'deleted_count': deleted_count
+        }
+        
+        if protected_count > 0:
+            response_data['message'] += f'. {protected_count} submitted idea{"s" if protected_count != 1 else ""} protected.'
+            response_data['protected_count'] = protected_count
+        
+        return Response(response_data)
+    
     @action(detail=True, methods=['post'])
     def reset_session(self, request, pk=None):
         """
@@ -818,7 +923,9 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            ai_service = MagLabsService()
+            # Extract JWT token from request for authentication forwarding
+            auth_token = get_jwt_token_from_request(request)
+            ai_service = MagLabsService(auth_token=auth_token)
             
             # Ensure session has fresh context for interview mode
             if not session.maglabs_session_id:
@@ -832,7 +939,8 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             result = ai_service.start_interview_mode(
                 session_id=session.maglabs_session_id,
                 template=session.template,
-                interview_goals=interview_goals
+                interview_goals=interview_goals,
+                auth_token=auth_token
             )
             
             # Validate response
@@ -1079,6 +1187,16 @@ class ChatTemplateViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Filter templates by department and active status"""
+        # Auto-populate templates if none exist
+        if not ChatTemplate.objects.filter(is_active=True).exists():
+            try:
+                from apps.ideas.management.commands.populate_chat_templates import Command
+                command = Command()
+                command.handle()
+                logger.info("Auto-populated chat templates on first access")
+            except Exception as e:
+                logger.warning(f"Failed to auto-populate chat templates: {e}")
+        
         user = self.request.user
         queryset = ChatTemplate.objects.filter(is_active=True)
         

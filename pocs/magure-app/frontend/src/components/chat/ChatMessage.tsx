@@ -13,59 +13,64 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isSystem = message.role === 'system';
   
   return (
-    <div className={cn("flex gap-3", isUser && "flex-row-reverse")}>
+    <div className={cn("flex gap-3 mb-6", isUser && "flex-row-reverse")}>
+      {/* Avatar */}
       <div className={cn(
-        "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
+        "chat-avatar",
         isUser 
-          ? "bg-blue-500" 
-          : isError 
-          ? "bg-red-500" 
-          : isSystem
-          ? "bg-gray-500"
-          : "bg-gray-700"
+          ? "chat-avatar-user" 
+          : "chat-avatar-ai"
       )}>
         {isUser ? (
-          <User size={16} className="text-white" />
+          <User size={16} />
         ) : isError ? (
-          <AlertCircle size={16} className="text-white" />
+          <AlertCircle size={16} />
         ) : isSystem ? (
-          <Info size={16} className="text-white" />
+          <Info size={16} />
         ) : (
-          <Bot size={16} className="text-white" />
+          <Bot size={16} />
         )}
       </div>
       
-      <div className={cn("flex-1 space-y-1", isUser && "text-right")}>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+      {/* Message Content */}
+      <div className={cn("flex-1 space-y-1", isUser && "flex flex-col items-end")}>
+        {/* Message Header */}
+        <div className={cn(
+          "flex items-center gap-2 text-xs",
+          isUser ? "flex-row-reverse text-right" : "",
+          "text-gray-500"
+        )}>
           <span className="font-medium">
             {isUser ? 'You' : isSystem ? 'System' : 'AI Assistant'}
           </span>
           <span>{message.formatted_time}</span>
           {message.ai_metadata?.interview_stage && (
-            <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-xs">
+            <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-medium">
               {message.ai_metadata.interview_stage.replace('_', ' ')}
             </span>
           )}
         </div>
         
+        {/* Message Bubble */}
         <div className={cn(
-          "inline-block px-4 py-2 rounded-2xl max-w-[80%]",
+          "inline-block px-4 py-3 max-w-[80%] font-medium",
           isUser 
-            ? "bg-blue-500 text-white" 
+            ? "chat-message-user" 
             : isError 
-            ? "bg-red-50 text-red-900 border border-red-200"
+            ? "bg-red-50 text-red-900 border border-red-200 rounded-xl"
             : isSystem
-            ? "bg-gray-50 text-gray-900 border border-gray-200"
-            : "bg-gray-100 text-gray-900"
+            ? "bg-gray-50 text-gray-900 border border-gray-200 rounded-xl"
+            : "chat-message-ai"
         )}>
-          <div className="whitespace-pre-wrap break-words">
+          <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
             {message.content}
           </div>
           
+          {/* Metadata */}
           {message.ai_metadata?.usage && (
-            <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500">
+            <div className="mt-3 pt-2 border-t border-gray-200/50 text-xs text-gray-500">
               <div className="flex items-center justify-between">
-                <span>Tokens: {message.ai_metadata.usage.total_tokens}</span>
+                <span>Tokens: {message.ai_metadata.usage.total_tokens.toLocaleString()}</span>
                 {message.ai_metadata.processing_time_ms && (
                   <span>{message.ai_metadata.processing_time_ms}ms</span>
                 )}
@@ -73,10 +78,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             </div>
           )}
           
+          {/* Submission Status */}
           {message.message_type === 'submission' && (
-            <div className="mt-2 flex items-center gap-1 text-xs">
+            <div className="mt-2 flex items-center gap-2 text-xs">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-green-700">Idea submitted</span>
+              <span className="text-green-700 font-medium">Idea submitted successfully</span>
             </div>
           )}
         </div>

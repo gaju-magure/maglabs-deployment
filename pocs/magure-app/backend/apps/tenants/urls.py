@@ -5,7 +5,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     TenantViewSet, OnboardingVerifyTokenView, OnboardingProfileSetupView, 
     OnboardingCompanyDetailsView, OnboardingPreferencesView, OnboardingStatusView, 
-    OnboardingStepManagementView
+    OnboardingStepManagementView, TenantBrandingViewSet, DefaultThemeTemplateViewSet,
+    TenantAssetViewSet
 )
 from .admin_views import TenantDepartmentViewSet, TenantRoleViewSet
 
@@ -16,6 +17,12 @@ router.register(r'', TenantViewSet, basename='tenants')
 admin_router = DefaultRouter()
 admin_router.register(r'departments', TenantDepartmentViewSet, basename='tenant-departments')
 admin_router.register(r'roles', TenantRoleViewSet, basename='tenant-roles')
+
+# Branding routers
+branding_router = DefaultRouter()
+branding_router.register(r'branding', TenantBrandingViewSet, basename='tenant-branding')
+branding_router.register(r'templates', DefaultThemeTemplateViewSet, basename='theme-templates')
+branding_router.register(r'assets', TenantAssetViewSet, basename='tenant-assets')
 
 urlpatterns = router.urls + [
     # Enhanced Onboarding endpoints
@@ -28,4 +35,7 @@ urlpatterns = router.urls + [
     
     # Admin management endpoints
     path('admin/', include(admin_router.urls)),
+    
+    # Branding management endpoints
+    path('', include(branding_router.urls)),
 ]

@@ -36,6 +36,7 @@ export interface ChatMessage {
 
 export interface StageProgressData {
   stage_name: string;
+  stage_progress: number;
   stage_completion: { [stageName: string]: number };
   business_context: {
     problem_clarity: number;
@@ -74,6 +75,7 @@ export const getLatestStageProgression = (messages: ChatMessage[]): StageProgres
     if (metadata.stage_name || metadata.stage || metadata.business_context) {
       return {
         stage_name: metadata.stage_name || metadata.stage || 'initialization',
+        stage_progress: metadata.stage_progress,
         stage_completion: metadata.stage_completion || {},
         business_context: {
           problem_clarity: metadata.business_context?.problem_clarity || 0,

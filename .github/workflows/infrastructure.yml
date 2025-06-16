@@ -1,0 +1,196 @@
+name: Infrastructure & Deployment
+
+on:
+  push:
+    branches: [main, staging]
+    paths:
+      - 'pocs/magure-app/docker-compose*.yml'
+      - 'pocs/magure-app/nginx/**'
+      - 'pocs/magure-app/.env.*'
+      - '.github/workflows/infrastructure.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'pocs/magure-app/docker-compose*.yml'
+      - 'pocs/magure-app/nginx/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  # Validate Docker Compose
+  validate-compose:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./pocs/magure-app
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml
+        run: docker-compose config
+
+      - name: Validate production compose
+        run: docker-compose -f docker-compose.yml -f docker-compose.production.yml config
+
+      - name: Validate AWS compose
+        run: docker-compose -f docker-compose.yml -f docker-compose.aws.yml config
+
+  # Validate Nginx Configuration
+  validate-nginx:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test Nginx configuration syntax
+        run: |
+          docker run --rm -v $PWD/pocs/magure-app/nginx:/etc/nginx:ro nginx:alpine nginx -t
+
+      - name: Security scan of Nginx config
+        run: |
+          # Install nginx security scanner
+          npm install -g gixy
+          gixy pocs/magure-app/nginx/nginx.conf || true
+
+  # Infrastructure Security Scan
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: './pocs/magure-app'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Deploy Infrastructure to Staging
+  deploy-staging:
+    needs: [validate-compose, validate-nginx, security-scan]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/staging' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy to ECS Staging
+        run: |
+          echo "Deploying infrastructure to staging"
+          # Add your staging infrastructure deployment commands
+          # Example: aws ecs update-service --cluster staging --service nginx --force-new-deployment
+
+      - name: Update staging environment
+        run: |
+          echo "Updating staging environment variables"
+          # Update ECS task definitions with new environment variables
+
+      - name: Health check
+        run: |
+          echo "Running health checks on staging infrastructure"
+          # Add health check commands
+
+  # Deploy Infrastructure to Production
+  deploy-production:
+    needs: [validate-compose, validate-nginx, security-scan]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Create backup
+        run: |
+          echo "Creating infrastructure backup"
+          # Create backup of current infrastructure state
+
+      - name: Deploy to ECS Production
+        run: |
+          echo "Deploying infrastructure to production"
+          # Add your production infrastructure deployment commands
+
+      - name: Update production environment
+        run: |
+          echo "Updating production environment variables"
+          # Update ECS task definitions with new environment variables
+
+      - name: Health check
+        run: |
+          echo "Running health checks on production infrastructure"
+          # Add health check commands
+
+      - name: Smoke tests
+        run: |
+          echo "Running smoke tests"
+          # Add smoke test commands
+
+      - name: Notify deployment
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          channel: '#infrastructure'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+  # Monitor Deployment
+  monitor-deployment:
+    needs: [deploy-staging, deploy-production]
+    runs-on: ubuntu-latest
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+    
+    steps:
+      - name: Monitor application health
+        run: |
+          echo "Monitoring application health post-deployment"
+          # Add monitoring commands
+
+      - name: Check metrics
+        run: |
+          echo "Checking application metrics"
+          # Add metrics checking commands
+
+      - name: Alert if issues detected
+        if: failure()
+        run: |
+          echo "Issues detected, sending alerts"
+          # Add alerting commands

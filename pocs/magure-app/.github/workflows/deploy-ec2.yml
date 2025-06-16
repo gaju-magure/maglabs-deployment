@@ -1,0 +1,132 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_KEY }}
+        port: 22
+        script: |
+          # Navigate to application directory
+          cd ${{ secrets.DEPLOY_PATH || '/opt/maglabs' }}
+          
+          # Pull latest changes
+          echo "📥 Pulling latest changes..."
+          git pull origin main
+          
+          # Check if environment file exists
+          if [ ! -f ".env.ec2" ]; then
+            echo "❌ .env.ec2 file not found!"
+            exit 1
+          fi
+          
+          # Copy environment file
+          cp .env.ec2 .env
+          
+          # Create data directories if they don't exist
+          echo "📁 Creating data directories..."
+          mkdir -p postgres-data backups logs
+          sudo chown -R $USER:$USER postgres-data backups logs
+          
+          # Backup database before deployment
+          echo "💾 Backing up database..."
+          if docker-compose ps postgres | grep -q "Up"; then
+            ./scripts/backup-db.sh || echo "⚠️ Backup failed, continuing..."
+          fi
+          
+          # Stop existing services
+          echo "🛑 Stopping services..."
+          docker-compose -f docker-compose.yml -f docker-compose.ec2.yml down
+          
+          # Build and start services
+          echo "🏗️ Building and starting services..."
+          docker-compose -f docker-compose.yml -f docker-compose.ec2.yml build
+          docker-compose -f docker-compose.yml -f docker-compose.ec2.yml up -d
+          
+          # Wait for services to be ready
+          echo "⏳ Waiting for services..."
+          sleep 30
+          
+          # Run migrations
+          echo "🗃️ Running migrations..."
+          docker-compose exec -T backend python manage.py migrate
+          
+          # Collect static files
+          echo "📦 Collecting static files..."
+          docker-compose exec -T backend python manage.py collectstatic --noinput
+          
+          # Health check
+          echo "🏥 Checking service health..."
+          sleep 10
+          
+          # Check if services are running
+          if docker-compose ps | grep -q "Up"; then
+            echo "✅ Deployment successful!"
+            docker-compose ps
+          else
+            echo "❌ Some services failed to start"
+            docker-compose logs --tail=50
+            exit 1
+          fi
+    
+    - name: Verify deployment
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_KEY }}
+        port: 22
+        script: |
+          # Simple health checks
+          echo "🔍 Verifying deployment..."
+          
+          # Check nginx
+          if curl -f -s http://localhost/health > /dev/null; then
+            echo "✅ Nginx is healthy"
+          else
+            echo "❌ Nginx health check failed"
+            exit 1
+          fi
+          
+          # Check backend
+          if curl -f -s http://localhost/api/health/ > /dev/null; then
+            echo "✅ Backend is healthy"
+          else
+            echo "❌ Backend health check failed"
+            exit 1
+          fi
+          
+          echo "🎉 All health checks passed!"
+    
+    - name: Send notification
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Deployment to EC2 completed successfully"
+        else
+          echo "❌ Deployment to EC2 failed"
+        fi

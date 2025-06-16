@@ -52,77 +52,84 @@ ssh -i your-key.pem ubuntu@your-ec2-ip
 cd your-repo
 ```
 
-## ⚙️ Step 3: Configure Environment
+## ⚙️ Step 3: Configure Environment (Automated!)
 
-### 3.1 Update Environment File
+### 3.1 Run Configuration Wizard
+
 ```bash
-# Copy and edit environment file
-cp .env.ec2 .env.ec2.local
-nano .env.ec2.local
+# This script auto-configures everything for you!
+./configure-ec2.sh
 ```
 
-**Update these critical values:**
-```bash
-# Domain Configuration (REQUIRED for subdomain routing)
-DOMAIN_NAME=yourdomain.com
+**The wizard will:**
+- ✅ Auto-detect your EC2 public IP
+- ✅ Generate secure database passwords and Django secret keys
+- ✅ Configure for IP-based access (simple) or custom domain (advanced)
+- ✅ Set up all environment variables correctly
+- ✅ Create a ready-to-use `.env.ec2` file
 
-# Database Security
-DB_PASSWORD=your-secure-password-here
+### 3.2 Configuration Options
 
-# Django Security
-SECRET_KEY=your-very-long-secret-key-50-chars-minimum
+**Option 1: IP-Based (Recommended for first-time):**
+- Uses your EC2 IP address directly
+- No DNS setup required
+- No SSL complexity
+- Perfect for testing and staging
 
-# MagLabs API
-MAGLABS_API_KEY=your-actual-api-key
+**Option 2: Custom Domain (Advanced):**
+- Uses your own domain name
+- Requires DNS configuration
+- Supports SSL certificates
+- Multi-tenant subdomain routing
 
-# Email Configuration (optional)
-EMAIL_HOST_USER=your-email@gmail.com
-EMAIL_HOST_PASSWORD=your-app-password
-```
-
-### 3.2 Rename Environment File
-```bash
-mv .env.ec2.local .env.ec2
-```
+**Required Input:**
+- MagLabs API key (can be added later)
+- Email settings (optional, can skip)
+- Domain choice (IP vs custom domain)
 
 ## 🚀 Step 4: Initial Deployment (One-Time Setup)
 
 ### 4.1 First Deployment
+
 ```bash
-# Deploy the application for the first time
+# Deploy the application (auto-runs configuration if needed)
 ./deploy-ec2.sh
 ```
 
-This **one-time** deployment will:
-- Create data directories for persistent storage
-- Build all Docker containers
-- Start services with persistent volumes
-- Run database migrations
-- Collect static files
-- Set up SSL certificates
-
-### 4.2 Verify Initial Setup
-```bash
-# Check service status
-docker-compose ps
-
-# Test access (replace with your domain)
-curl https://yourdomain.com/health
-```
+**The deployment will automatically:**
+- ✅ Run configuration wizard if `.env.ec2` needs setup
+- ✅ Create database initialization scripts with your password
+- ✅ Choose correct nginx config (IP-based vs domain-based)
+- ✅ Create data directories for persistent storage
+- ✅ Build all Docker containers
+- ✅ Start services with persistent volumes
+- ✅ Initialize PostgreSQL database and user
+- ✅ Run Django database migrations
+- ✅ Create Django superuser (admin/admin123)
+- ✅ Collect static files
+- ✅ Display access URLs
 
 ### 4.2 Verify Deployment
+
 ```bash
 # Check service status
 docker-compose ps
 
-# Check logs if needed
-docker-compose logs backend
-docker-compose logs frontend
+# Test access (script shows your actual URLs)
+curl http://YOUR-EC2-IP/health
 ```
+
+**You'll see URLs like:**
+- 🌍 Main Site: `http://YOUR-EC2-IP/`
+- 🔌 API: `http://YOUR-EC2-IP/api/`
+- ⚙️ Admin: `http://YOUR-EC2-IP/admin/`
+
+**Default admin login:** admin/admin123
 
 ## 🔧 Step 5: Setup GitHub Actions (Automated Deployments)
 
 ### 5.1 Configure GitHub Secrets
+
 Go to your GitHub repository → Settings → Secrets → Actions and add:
 
 ```bash
@@ -135,7 +142,9 @@ DEPLOY_PATH=/opt/maglabs          # Optional, defaults to /opt/maglabs
 **✅ That's it! No more manual deployments needed.**
 
 ### 5.2 How Automated Deployments Work
+
 **Automatic Triggers:**
+
 - Push to `main` branch → Automatic deployment
 - Pull request merge → Automatic deployment
 
@@ -147,7 +156,9 @@ DEPLOY_PATH=/opt/maglabs          # Optional, defaults to /opt/maglabs
 ## 🌐 Step 6: Configure Domain & SSL
 
 ### 6.1 DNS Configuration
+
 **Point these DNS records to your EC2 IP:**
+
 ```
 A     yourdomain.com          → YOUR-EC2-IP
 A     *.yourdomain.com        → YOUR-EC2-IP  (wildcard for subdomains)
@@ -164,7 +175,9 @@ sudo certbot certonly --manual -d yourdomain.com -d *.yourdomain.com
 ```
 
 ### 6.3 Access Your Multi-Tenant Application
+
 **Production URLs:**
+
 - **Main Site**: `https://yourdomain.com/`
 - **API Endpoint**: `https://api.yourdomain.com/api/`
 - **Admin Panel**: `https://admin.yourdomain.com/`
@@ -174,7 +187,9 @@ sudo certbot certonly --manual -d yourdomain.com -d *.yourdomain.com
 ## 🔄 Daily Operations (All Automated!)
 
 ### Deploying Updates
+
 **🎯 Normal Process (Recommended):**
+
 ```bash
 # Just push your changes - deployment happens automatically!
 git add .
@@ -184,13 +199,17 @@ git push origin main
 ```
 
 **🆘 Manual Trigger (if needed):**
+
 - Go to GitHub → Actions → "Deploy to EC2" → "Run workflow"
 
 ### Monitoring & Troubleshooting
+
 **View Deployment Status:**
+
 - GitHub → Actions tab → See deployment progress in real-time
 
 **SSH for Emergency Access:**
+
 ```bash
 # Only needed for troubleshooting
 ssh -i your-key.pem ubuntu@your-ec2-ip
@@ -355,7 +374,9 @@ If you encounter issues:
 ```
 
 ### Deployment Monitoring
+
 **Real-time Status:**
+
 - GitHub → Actions tab → See live deployment progress
 - Get email notifications on success/failure
 
@@ -367,7 +388,9 @@ curl https://api.yourdomain.com/health/
 ```
 
 ### Rollback Strategy
+
 If something goes wrong:
+
 1. **Revert your commit** in GitHub
 2. **Push the revert** → Automatic rollback deployment
 3. **Or trigger manual deployment** with previous working commit
@@ -379,7 +402,7 @@ If something goes wrong:
 ✅ **Fully Automated**: Push code → Auto-deploy (no manual work!)
 ✅ **Zero Downtime**: Rolling deployments with health checks
 ✅ **Production-Ready**: SSL, backups, monitoring
-✅ **Multi-Tenant**: Subdomain-based tenant isolation  
+✅ **Multi-Tenant**: Subdomain-based tenant isolation
 ✅ **Persistent Data**: Database survives all deployments
 ✅ **Auto-Backups**: Every deployment backs up your data
 ✅ **Secure**: HTTPS, rate limiting, security headers

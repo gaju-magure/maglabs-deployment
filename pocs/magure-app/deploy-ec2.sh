@@ -14,10 +14,21 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Deploying MagLabs to EC2...${NC}"
 
-# Check if environment file exists
+# Check if environment file exists and is configured
 if [ ! -f ".env.ec2" ]; then
-    echo -e "${RED}❌ .env.ec2 file not found!${NC}"
-    echo "Please create .env.ec2 with your EC2 configuration"
+    echo -e "${YELLOW}⚠️ .env.ec2 file not found!${NC}"
+    echo "Running configuration setup..."
+    ./configure-ec2.sh
+elif grep -q "your-secure-database-password-here\|your-domain.com\|your-very-long-secret-key" ".env.ec2"; then
+    echo -e "${YELLOW}⚠️ .env.ec2 has placeholder values!${NC}"
+    echo "Running configuration setup..."
+    ./configure-ec2.sh
+fi
+
+# Verify configuration was successful
+if [ ! -f ".env.ec2" ] || grep -q "your-secure-database-password-here\|your-domain.com\|your-very-long-secret-key" ".env.ec2"; then
+    echo -e "${RED}❌ Configuration incomplete!${NC}"
+    echo "Please run: ./configure-ec2.sh"
     exit 1
 fi
 
@@ -25,10 +36,30 @@ fi
 echo -e "${BLUE}📋 Setting up environment...${NC}"
 cp .env.ec2 .env
 
+# Source environment to get configuration values
+source .env
+
 # Create data directories if they don't exist
 echo -e "${BLUE}📁 Creating data directories...${NC}"
-mkdir -p postgres-data backups logs backend-static backend-media certbot/conf certbot/www
-sudo chown -R $USER:$USER postgres-data backups logs backend-static backend-media certbot || true
+mkdir -p postgres-data backups logs backend-static backend-media certbot/conf certbot/www postgres/init
+sudo chown -R $USER:$USER postgres-data backups logs backend-static backend-media certbot postgres || true
+
+# Update database password in initialization script
+echo -e "${BLUE}🔐 Updating database configuration...${NC}"
+sed -i "s/placeholder_password/${DB_PASSWORD}/g" postgres/init/01-init-database.sql
+
+# Choose nginx configuration based on domain type
+echo -e "${BLUE}🌐 Configuring nginx...${NC}"
+if [ "${USE_CUSTOM_DOMAIN}" = "true" ]; then
+    echo "Using domain-based nginx configuration for: ${DOMAIN_NAME}"
+    # Use the domain-based config and substitute variables
+    envsubst '${DOMAIN_NAME}' < nginx/conf.d/ec2.conf > /tmp/nginx-ec2.conf
+    cp /tmp/nginx-ec2.conf nginx/conf.d/default.conf
+else
+    echo "Using IP-based nginx configuration for: ${DOMAIN_NAME}"
+    # Use the simple IP-based config
+    cp nginx/conf.d/ec2-ip.conf nginx/conf.d/default.conf
+fi
 
 # Pull latest changes (if in git repo)
 if [ -d ".git" ]; then
@@ -61,10 +92,25 @@ docker-compose -f docker-compose.yml -f docker-compose.ec2.yml up -d
 echo -e "${BLUE}⏳ Waiting for services to start...${NC}"
 sleep 30
 
+# Wait for database to be fully ready
+echo -e "${BLUE}⏳ Waiting for database to be ready...${NC}"
+sleep 10
+
 # Run database migrations
 echo -e "${BLUE}🗃️ Running database migrations...${NC}"
 docker-compose exec -T backend python manage.py migrate
 
+# Create Django superuser if it doesn't exist
+echo -e "${BLUE}👤 Setting up Django superuser...${NC}"
+docker-compose exec -T backend python manage.py shell << 'EOF'
+from django.contrib.auth import get_user_model
+User = get_user_model()
+if not User.objects.filter(username='admin').exists():
+    User.objects.create_superuser('admin', 'admin@localhost', 'admin123')
+    print("Created superuser: admin/admin123")
+else:
+    print("Superuser already exists")
+EOF
 # Collect static files
 echo -e "${BLUE}📦 Collecting static files...${NC}"
 docker-compose exec -T backend python manage.py collectstatic --noinput
@@ -90,12 +136,37 @@ docker-compose ps
 echo -e "${GREEN}🎉 Deployment completed successfully!${NC}"
 echo ""
 echo -e "${BLUE}🌐 Access your application:${NC}"
-echo "Frontend: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)/"
-echo "API: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)/api/"
-echo "Admin: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)/admin/"
+
+# Source environment again to get latest values
+source .env
+
+if [ "${USE_CUSTOM_DOMAIN}" = "true" ]; then
+    if [ "${SSL_ENABLED}" = "true" ]; then
+        echo "🌍 Main Site: https://${DOMAIN_NAME}/"
+        echo "🔌 API: https://api.${DOMAIN_NAME}/api/"
+        echo "⚙️ Admin: https://admin.${DOMAIN_NAME}/"
+        echo ""
+        echo -e "${YELLOW}💡 SSL Setup Required:${NC}"
+        echo "Run: sudo certbot --nginx -d ${DOMAIN_NAME} -d *.${DOMAIN_NAME}"
+    else
+        echo "🌍 Main Site: http://${DOMAIN_NAME}/"
+        echo "🔌 API: http://${DOMAIN_NAME}/api/"
+        echo "⚙️ Admin: http://${DOMAIN_NAME}/admin/"
+    fi
+else
+    echo "🌍 Main Site: http://${DOMAIN_NAME}/"
+    echo "🔌 API: http://${DOMAIN_NAME}/api/"
+    echo "⚙️ Admin: http://${DOMAIN_NAME}/admin/"
+fi
+
+echo ""
+echo -e "${BLUE}👤 Default Admin Login:${NC}"
+echo "Username: admin"
+echo "Password: admin123"
 echo ""
 echo -e "${BLUE}📋 Useful commands:${NC}"
 echo "View logs: docker-compose logs [service_name]"
 echo "Restart services: docker-compose restart"
 echo "Stop services: docker-compose down"
 echo "Update deployment: ./deploy-ec2.sh"
+echo "Backup database: ./scripts/backup-db.sh"
